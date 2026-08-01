@@ -13,6 +13,7 @@ from app.api.routes import (
     rbac,
     scripts,
     tags,
+    workflows,
 )
 
 api_router = APIRouter()
@@ -30,3 +31,4 @@ api_router.include_router(content_versions.versions_router)
 api_router.include_router(content_versions.approvals_router)
 api_router.include_router(scripts.project_scripts_router)
 api_router.include_router(scripts.scripts_router)
+api_router.include_router(workflows.workflows_router)
