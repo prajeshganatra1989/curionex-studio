@@ -42,3 +42,12 @@ ACTION_KNOWLEDGE_PACK_UPDATED = "knowledge_pack.updated"
 ACTION_KNOWLEDGE_PACK_ARCHIVED = "knowledge_pack.archived"
 ACTION_KNOWLEDGE_PACK_SECTION_UPDATED = "knowledge_pack.section_updated"
 ACTION_KNOWLEDGE_PACK_SECTIONS_REORDERED = "knowledge_pack.sections_reordered"
+
+ENTITY_CONTENT_VERSION = "content_version"
+ENTITY_APPROVAL = "approval"
+
+ACTION_CONTENT_VERSION_CREATED = "content_version.created"
+ACTION_APPROVAL_REQUESTED = "approval.requested"
+ACTION_APPROVAL_APPROVED = "approval.approved"
+ACTION_APPROVAL_REJECTED = "approval.rejected"
+ACTION_APPROVAL_CANCELLED = "approval.cancelled"

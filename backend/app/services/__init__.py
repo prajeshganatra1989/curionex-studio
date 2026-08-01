@@ -2,6 +2,7 @@
 
 from app.services import (
     audit_service,
+    content_version_service,
     knowledge_pack_service,
     project_service,
     rbac_service,
@@ -10,6 +11,7 @@ from app.services import (
 
 __all__ = [
     "audit_service",
+    "content_version_service",
     "knowledge_pack_service",
     "project_service",
     "rbac_service",

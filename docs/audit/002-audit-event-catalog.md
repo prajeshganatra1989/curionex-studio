@@ -27,9 +27,16 @@ Stable action codes currently emitted by Curionex Studio. This catalog will grow
 | `knowledge_pack.archived` | `knowledge_pack` | Knowledge Pack archived |
 | `knowledge_pack.section_updated` | `knowledge_pack` | Section title/content updated |
 | `knowledge_pack.sections_reordered` | `knowledge_pack` | Section positions updated |
+| `content_version.created` | `content_version` | Immutable content version created |
+| `approval.requested` | `approval` | Approval requested for a version |
+| `approval.approved` | `approval` | Approval approved |
+| `approval.rejected` | `approval` | Approval rejected |
+| `approval.cancelled` | `approval` | Pending approval cancelled |
 
 Reserved for future use (defined in constants / docs, not all emitted yet):
 
 - `role.updated`
 
 Constants live in `app/audit/actions.py`.
+
+Note: audit metadata for content versions must **not** include full content snapshots.
