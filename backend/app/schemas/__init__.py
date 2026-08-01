@@ -44,6 +44,14 @@ from app.schemas.rbac import (
     RoleCreate,
     RoleResponse,
 )
+from app.schemas.script import (
+    ScriptCreate,
+    ScriptDocumentResponse,
+    ScriptDocumentUpdate,
+    ScriptListResponse,
+    ScriptResponse,
+    ScriptUpdate,
+)
 
 __all__ = [
     "ApprovalRequestCreate",
@@ -74,6 +82,12 @@ __all__ = [
     "ProjectUpdate",
     "RoleCreate",
     "RoleResponse",
+    "ScriptCreate",
+    "ScriptDocumentResponse",
+    "ScriptDocumentUpdate",
+    "ScriptListResponse",
+    "ScriptResponse",
+    "ScriptUpdate",
     "TagCreate",
     "TagResponse",
     "TagUpdate",

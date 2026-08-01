@@ -6,6 +6,7 @@ from app.services import (
     knowledge_pack_service,
     project_service,
     rbac_service,
+    script_service,
     user_service,
 )
 
@@ -15,5 +16,6 @@ __all__ = [
     "knowledge_pack_service",
     "project_service",
     "rbac_service",
+    "script_service",
     "user_service",
 ]

@@ -11,6 +11,7 @@ from app.api.routes import (
     knowledge_packs,
     projects,
     rbac,
+    scripts,
     tags,
 )
 
@@ -27,3 +28,5 @@ api_router.include_router(knowledge_packs.packs_router)
 api_router.include_router(content_versions.project_versions_router)
 api_router.include_router(content_versions.versions_router)
 api_router.include_router(content_versions.approvals_router)
+api_router.include_router(scripts.project_scripts_router)
+api_router.include_router(scripts.scripts_router)
