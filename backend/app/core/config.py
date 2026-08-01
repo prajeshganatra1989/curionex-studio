@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -21,6 +22,28 @@ class Settings(BaseSettings):
     DATABASE_URL: str = (
         "postgresql+psycopg://username:password@localhost:5432/curionex_studio"
     )
+
+    # Authentication — JWT_SECRET_KEY has no production default.
+    JWT_SECRET_KEY: str = ""
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+
+    @field_validator("JWT_ALGORITHM")
+    @classmethod
+    def validate_jwt_algorithm(cls, value: str) -> str:
+        if not value:
+            raise ValueError("JWT_ALGORITHM must not be empty")
+        return value
+
+    def require_jwt_secret(self) -> str:
+        """Return JWT secret or fail safely when unset."""
+        secret = self.JWT_SECRET_KEY.strip()
+        if not secret:
+            raise RuntimeError(
+                "JWT_SECRET_KEY is not configured. Set it via environment "
+                "or .env before using authentication."
+            )
+        return secret
 
 
 @lru_cache

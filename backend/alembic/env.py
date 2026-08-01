@@ -12,8 +12,7 @@ from sqlalchemy import create_engine, pool
 from app.core.config import settings
 from app.db.base import Base
 
-# Import models here as they are added so autogenerate can detect them:
-# import app.models  # noqa: F401
+import app.models  # noqa: F401  — register models on Base.metadata
 
 config = context.config
 
