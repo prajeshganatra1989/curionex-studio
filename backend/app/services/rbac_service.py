@@ -8,6 +8,15 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.audit.actions import (
+    ACTION_PERMISSION_ASSIGNED,
+    ACTION_ROLE_ASSIGNED,
+    ACTION_ROLE_CREATED,
+    ACTION_ROLE_REMOVED,
+    ENTITY_PERMISSION,
+    ENTITY_ROLE,
+    ENTITY_USER,
+)
 from app.models.rbac import Permission, Role, RolePermission, UserRole
 from app.models.user import User
 from app.rbac.catalog import (
@@ -15,6 +24,7 @@ from app.rbac.catalog import (
     PERMISSION_CATALOG,
     ROLE_CATALOG,
 )
+from app.services.audit_service import record_audit_event
 
 
 class DuplicateAssignmentError(Exception):
@@ -91,10 +101,24 @@ def create_role(
     *,
     name: str,
     description: str | None = None,
+    actor_user_id: UUID | None = None,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
 ) -> Role:
     role = Role(name=normalize_role_name(name), description=description, is_active=True)
     db.add(role)
     try:
+        db.flush()
+        record_audit_event(
+            db,
+            actor_user_id=actor_user_id,
+            action=ACTION_ROLE_CREATED,
+            entity_type=ENTITY_ROLE,
+            entity_id=role.id,
+            metadata={"name": role.name},
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
         db.commit()
     except IntegrityError as exc:
         db.rollback()
@@ -131,6 +155,9 @@ def assign_permission_to_role(
     *,
     role_id: UUID,
     permission_id: UUID,
+    actor_user_id: UUID | None = None,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
 ) -> RolePermission:
     role = get_role_by_id(db, role_id)
     permission = get_permission_by_id(db, permission_id)
@@ -140,6 +167,17 @@ def assign_permission_to_role(
     link = RolePermission(role_id=role_id, permission_id=permission_id)
     db.add(link)
     try:
+        db.flush()
+        record_audit_event(
+            db,
+            actor_user_id=actor_user_id,
+            action=ACTION_PERMISSION_ASSIGNED,
+            entity_type=ENTITY_PERMISSION,
+            entity_id=permission.id,
+            metadata={"role_id": str(role.id), "permission_code": permission.code},
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
         db.commit()
     except IntegrityError as exc:
         db.rollback()
@@ -155,6 +193,9 @@ def assign_role_to_user(
     *,
     user_id: UUID,
     role_id: UUID,
+    actor_user_id: UUID | None = None,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
 ) -> UserRole:
     user = db.get(User, user_id)
     role = get_role_by_id(db, role_id)
@@ -164,6 +205,17 @@ def assign_role_to_user(
     link = UserRole(user_id=user_id, role_id=role_id)
     db.add(link)
     try:
+        db.flush()
+        record_audit_event(
+            db,
+            actor_user_id=actor_user_id,
+            action=ACTION_ROLE_ASSIGNED,
+            entity_type=ENTITY_USER,
+            entity_id=user.id,
+            metadata={"role_id": str(role.id), "role": role.name},
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
         db.commit()
     except IntegrityError as exc:
         db.rollback()
@@ -177,11 +229,28 @@ def remove_role_from_user(
     *,
     user_id: UUID,
     role_id: UUID,
+    actor_user_id: UUID | None = None,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
 ) -> None:
     link = db.get(UserRole, (user_id, role_id))
     if link is None:
         raise NotFoundError("User role assignment not found.")
+    role = get_role_by_id(db, role_id)
     db.delete(link)
+    record_audit_event(
+        db,
+        actor_user_id=actor_user_id,
+        action=ACTION_ROLE_REMOVED,
+        entity_type=ENTITY_USER,
+        entity_id=user_id,
+        metadata={
+            "role_id": str(role_id),
+            "role": role.name if role is not None else None,
+        },
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
     db.commit()
 
 

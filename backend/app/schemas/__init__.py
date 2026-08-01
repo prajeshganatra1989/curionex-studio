@@ -1,5 +1,6 @@
 """Pydantic request and response schemas."""
 
+from app.schemas.audit import AuditLogListResponse, AuditLogResponse
 from app.schemas.auth import (
     LoginRequest,
     TokenResponse,
@@ -15,6 +16,8 @@ from app.schemas.rbac import (
 )
 
 __all__ = [
+    "AuditLogListResponse",
+    "AuditLogResponse",
     "LoginRequest",
     "MessageResponse",
     "PermissionResponse",
