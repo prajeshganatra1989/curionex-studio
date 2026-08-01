@@ -20,7 +20,6 @@ function AuthLoading({ label = "Loading Curionex Studio…" }: { label?: string 
 
 export function RequireAuth({ children }: { children: React.ReactNode }) {
   const { status } = useAuth();
-  const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
