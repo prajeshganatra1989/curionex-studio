@@ -17,8 +17,9 @@ class Settings(BaseSettings):
     APP_NAME: str = "Curionex Studio API"
     APP_VERSION: str = "0.1.0"
     ENVIRONMENT: str = "development"
+    # Override via environment or .env — never commit real credentials.
     DATABASE_URL: str = (
-        "postgresql+psycopg://postgres:postgres@localhost:5432/curionex_studio"
+        "postgresql+psycopg://username:password@localhost:5432/curionex_studio"
     )
 
 
