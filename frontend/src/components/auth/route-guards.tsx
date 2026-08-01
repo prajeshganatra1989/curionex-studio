@@ -4,7 +4,19 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { useAuth } from "@/lib/auth/auth-context";
+import { tokenStore } from "@/lib/auth/token-store";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+
+function AuthLoading({ label = "Loading Curionex Studio…" }: { label?: string }) {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background p-6">
+      <div className="w-full max-w-sm space-y-3 text-center">
+        <LoadingSkeleton className="mx-auto h-10 w-48" />
+        <p className="text-sm text-muted-foreground">{label}</p>
+      </div>
+    </div>
+  );
+}
 
 export function RequireAuth({ children }: { children: React.ReactNode }) {
   const { status } = useAuth();
@@ -12,22 +24,19 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      const next = encodeURIComponent(pathname || "/dashboard");
-      router.replace(`/login?next=${next}`);
-    }
-  }, [status, router, pathname]);
+    if (status !== "unauthenticated") return;
+    tokenStore.clear();
+    const next = encodeURIComponent(pathname || "/dashboard");
+    // Hard navigation breaks any stale cookie ↔ client redirect loop.
+    window.location.replace(`/login?next=${next}`);
+  }, [status, pathname]);
 
   if (status === "loading") {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-6">
-        <LoadingSkeleton className="h-10 w-48" />
-      </div>
-    );
+    return <AuthLoading />;
   }
 
   if (status !== "authenticated") {
-    return null;
+    return <AuthLoading label="Redirecting to sign in…" />;
   }
 
   return <>{children}</>;
@@ -48,15 +57,11 @@ export function RedirectIfAuthenticated({
   }, [status, router]);
 
   if (status === "loading") {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-6">
-        <LoadingSkeleton className="h-10 w-48" />
-      </div>
-    );
+    return <AuthLoading />;
   }
 
   if (status === "authenticated") {
-    return null;
+    return <AuthLoading label="Opening dashboard…" />;
   }
 
   return <>{children}</>;

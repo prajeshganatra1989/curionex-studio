@@ -52,6 +52,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const token = tokenStore.getAccessToken();
       if (!token) {
         if (!cancelled) {
+          // Drop stale middleware cookie so /login is reachable.
+          tokenStore.clear();
           setStatus("unauthenticated");
           setUser(null);
         }

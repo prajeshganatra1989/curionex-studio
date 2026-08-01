@@ -1,13 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { render, waitFor } from "@testing-library/react";
 
 import { RequireAuth } from "@/components/auth/route-guards";
-import { render } from "@testing-library/react";
-import { vi } from "vitest";
-
-const replaceMock = vi.fn();
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: replaceMock, push: vi.fn() }),
+  useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
   usePathname: () => "/dashboard",
 }));
 
@@ -22,14 +19,24 @@ vi.mock("@/lib/auth/auth-context", () => ({
 }));
 
 describe("RequireAuth", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("redirects unauthenticated users to login", async () => {
+    const replace = vi.fn();
+    vi.stubGlobal("location", { replace });
+
     render(
       <RequireAuth>
         <div>Secret</div>
       </RequireAuth>,
     );
-    expect(replaceMock).toHaveBeenCalledWith(
-      expect.stringMatching(/^\/login\?next=/),
-    );
+
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledWith(
+        expect.stringMatching(/^\/login\?next=/),
+      );
+    });
   });
 });
