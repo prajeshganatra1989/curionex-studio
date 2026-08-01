@@ -1,5 +1,6 @@
 """Shared FastAPI dependencies."""
 
+from collections.abc import Callable
 from typing import Annotated
 from uuid import UUID
 
@@ -11,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.security import decode_access_token
 from app.db.session import get_db
 from app.models.user import User
+from app.services.rbac_service import has_permission
 from app.services.user_service import get_user_by_id
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -45,3 +47,20 @@ def get_current_user(
     if user is None or not user.is_active:
         raise credentials_exception
     return user
+
+
+def require_permission(permission_code: str) -> Callable[..., User]:
+    """FastAPI dependency factory for permission-code authorization."""
+
+    def _dependency(
+        current_user: Annotated[User, Depends(get_current_user)],
+        db: Annotated[Session, Depends(get_db)],
+    ) -> User:
+        if not has_permission(db, current_user, permission_code):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to perform this action.",
+            )
+        return current_user
+
+    return _dependency
