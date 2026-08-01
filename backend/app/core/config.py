@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     PROJECT_CODE_PREFIX: str = "CRX"
     PROJECT_CODE_PAD_WIDTH: int = 4
 
+    # Comma-separated browser origins allowed to call the API (empty = CORS off).
+    # Example: http://localhost:3000,http://127.0.0.1:3000
+    CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
+
     @field_validator("JWT_ALGORITHM")
     @classmethod
     def validate_jwt_algorithm(cls, value: str) -> str:
@@ -63,6 +67,17 @@ class Settings(BaseSettings):
                 "or .env before using authentication."
             )
         return secret
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        """Parse CORS_ORIGINS into a clean list (empty disables CORS middleware)."""
+        if not self.CORS_ORIGINS.strip():
+            return []
+        return [
+            origin.strip()
+            for origin in self.CORS_ORIGINS.split(",")
+            if origin.strip()
+        ]
 
 
 @lru_cache

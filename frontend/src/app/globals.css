@@ -1,0 +1,168 @@
+@import "tailwindcss";
+
+:root {
+  /* Surfaces */
+  --background: #070708;
+  --surface: #111114;
+  --surface-elevated: #18181c;
+  --surface-hover: #1f1f24;
+  --border: #2a2a30;
+  --border-strong: #3a3a42;
+
+  /* Typography */
+  --foreground: #f5f5f7;
+  --muted-foreground: #9a9aa3;
+
+  /* Brand */
+  --brand-yellow: #f5c518;
+  --brand-amber: #f0a020;
+  --brand-orange: #e8720c;
+  --brand-gradient: linear-gradient(
+    135deg,
+    var(--brand-yellow) 0%,
+    var(--brand-amber) 48%,
+    var(--brand-orange) 100%
+  );
+
+  /* Semantic status */
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #3b82f6;
+
+  /* Effects */
+  --glow-brand: 0 0 24px rgba(232, 114, 12, 0.22);
+  --shadow-panel: 0 8px 32px rgba(0, 0, 0, 0.45);
+  --radius: 0.75rem;
+  --radius-sm: 0.5rem;
+  --sidebar-width: 16.5rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-hover: var(--surface-hover);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-brand-yellow: var(--brand-yellow);
+  --color-brand-amber: var(--brand-amber);
+  --color-brand-orange: var(--brand-orange);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --radius-lg: var(--radius);
+  --radius-md: var(--radius-sm);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "ss01" on, "cv11" on;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--brand-orange) 35%, transparent);
+  color: var(--foreground);
+}
+
+:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--brand-orange) 70%, white);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Brand utilities */
+.text-gradient {
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.bg-brand-gradient {
+  background-image: var(--brand-gradient);
+}
+
+.border-gradient {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    var(--brand-gradient) border-box;
+}
+
+.glow-brand {
+  box-shadow: var(--glow-brand);
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-panel);
+}
+
+.nav-active {
+  background: color-mix(in srgb, var(--brand-orange) 12%, var(--surface));
+  color: #fff7ed;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--brand-orange) 45%, transparent),
+    var(--glow-brand);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Login atmosphere — CSS-only network feel, not a screenshot background */
+.login-atmosphere {
+  background-color: var(--background);
+  background-image:
+    radial-gradient(
+      ellipse 80% 55% at 50% -10%,
+      color-mix(in srgb, var(--brand-orange) 18%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      circle at 15% 80%,
+      color-mix(in srgb, var(--brand-yellow) 8%, transparent),
+      transparent 40%
+    ),
+    linear-gradient(
+      to bottom,
+      transparent,
+      color-mix(in srgb, #000 55%, transparent)
+    ),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%23f5c518' stroke-opacity='0.07'%3E%3Cpath d='M10 60h100M60 10v100'/%3E%3Ccircle cx='20' cy='30' r='2' fill='%23f5c518' fill-opacity='0.18' stroke='none'/%3E%3Ccircle cx='90' cy='40' r='1.5' fill='%23e8720c' fill-opacity='0.2' stroke='none'/%3E%3Ccircle cx='70' cy='85' r='2' fill='%23f0a020' fill-opacity='0.16' stroke='none'/%3E%3Cpath d='M20 30L60 60L90 40M60 60L70 85'/%3E%3C/g%3E%3C/svg%3E");
+  background-size:
+    auto,
+    auto,
+    auto,
+    120px 120px;
+}
