@@ -164,7 +164,7 @@ describe("Dashboard pieces", () => {
     );
     expect(screen.getByText(/today'?s goal/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/50% of daily goal/i)).toBeInTheDocument();
-    expect(screen.getByText(/demo data/i)).toBeInTheDocument();
+    expect(screen.getByText(/demo/i)).toBeInTheDocument();
   });
 
   it("renders recent projects", () => {

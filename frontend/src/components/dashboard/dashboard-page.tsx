@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import {
   BookOpen,
   CheckCircle2,
@@ -24,18 +25,46 @@ import { useAuth } from "@/lib/auth/auth-context";
 import { getDashboardData } from "@/lib/dashboard/data";
 import { greetingForHour } from "@/lib/utils";
 
+function ViewAllLink({ href }: { href: string }) {
+  return (
+    <Link
+      href={href}
+      className="text-xs font-medium text-brand-orange hover:underline"
+    >
+      View all
+    </Link>
+  );
+}
+
+function DemoMark() {
+  return (
+    <span className="rounded-md border border-border bg-surface px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+      Demo
+    </span>
+  );
+}
+
+function LiveMark() {
+  return (
+    <span className="rounded-md border border-brand-orange/30 bg-brand-orange/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-brand-amber">
+      Live
+    </span>
+  );
+}
+
 export function DashboardPage() {
-  const { user } = useAuth();
+  const { user, api, status } = useAuth();
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["dashboard"],
-    queryFn: getDashboardData,
+    queryFn: () => getDashboardData(api),
+    enabled: status === "authenticated",
   });
 
   const hour = new Date().getHours();
   const greeting = greetingForHour(hour);
   const firstName = user?.first_name ?? "there";
 
-  if (isLoading) {
+  if (isLoading || status === "loading") {
     return (
       <PageContainer>
         <DashboardSkeleton />
@@ -70,97 +99,131 @@ export function DashboardPage() {
 
   return (
     <PageContainer>
-      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-            {greeting}, {firstName}!
-          </h1>
-          <p className="mt-2 max-w-xl text-sm text-muted-foreground">
+      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-stretch lg:justify-between">
+        <div className="flex min-w-0 flex-1 flex-col justify-center">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+              {greeting}, {firstName}!{" "}
+              <span aria-hidden className="inline-block">
+                👋
+              </span>
+            </h1>
+            {metrics.isDemo ? (
+              <span className="rounded-md border border-border bg-surface px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+                Mixed live + demo
+              </span>
+            ) : null}
+          </div>
+          <p className="mt-2 max-w-xl text-sm text-muted-foreground sm:text-base">
             Ready to create something amazing today?
           </p>
         </div>
-        {metrics.isDemo ? (
-          <span className="self-start rounded-md border border-border bg-surface px-2 py-1 text-[11px] uppercase tracking-wide text-muted-foreground">
-            Demo dashboard data
-          </span>
-        ) : null}
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
-        <DailyGoalCard goal={data.dailyGoal} />
-        <div className="panel flex flex-col justify-center gap-2 p-5">
-          <p className="text-sm text-muted-foreground">Creator focus</p>
-          <p className="text-lg font-semibold text-foreground">
-            Prepare premium scripts. Ship two Shorts a day.
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Keep projects moving from Knowledge Pack → Script → Version →
-            Review.
-          </p>
+        <div className="w-full max-w-sm shrink-0 lg:w-80">
+          <DailyGoalCard goal={data.dailyGoal} />
         </div>
       </div>
 
-      <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         <MetricCard
           label="Projects"
           value={metrics.projects}
+          hint="From project list total"
           icon={FolderKanban}
           accent="brand"
+          isDemo={!metrics.projectsLive}
         />
         <MetricCard
           label="Knowledge Packs"
           value={metrics.knowledgePacks}
+          hint="Total packs"
           icon={BookOpen}
-          accent="info"
+          accent="brand"
+          isDemo
         />
         <MetricCard
           label="Scripts"
           value={metrics.scripts}
+          hint="Total scripts"
           icon={FileText}
           accent="brand"
+          isDemo
         />
         <MetricCard
           label="Draft Scripts"
           value={metrics.draftScripts}
+          hint="In progress"
           icon={PenLine}
           accent="warning"
+          isDemo
         />
         <MetricCard
           label="Pending Reviews"
           value={metrics.pendingReviews}
+          hint="Awaiting review"
           icon={ClipboardList}
           accent="warning"
+          isDemo
         />
         <MetricCard
           label="Approved Scripts"
           value={metrics.approvedScripts}
+          hint="Completed"
           icon={CheckCircle2}
           accent="success"
+          isDemo
         />
       </div>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-2">
+      <div className="mt-4 grid gap-4 xl:grid-cols-3">
         <SectionPanel
           title="Recent Projects"
-          description="Jump back into active production"
+          action={
+            <div className="flex items-center gap-2">
+              {data.recentProjectsLive ? <LiveMark /> : <DemoMark />}
+              <ViewAllLink href="/projects" />
+            </div>
+          }
         >
           <RecentProjectsList projects={data.recentProjects} />
         </SectionPanel>
         <SectionPanel
           title="Recent Scripts"
-          description="Workspace documents in motion"
+          action={
+            <div className="flex items-center gap-2">
+              <DemoMark />
+              <ViewAllLink href="/scripts" />
+            </div>
+          }
         >
           <RecentScriptsList scripts={data.recentScripts} />
         </SectionPanel>
         <SectionPanel
           title="Pending Reviews"
-          description="Approvals waiting on a decision"
+          action={
+            <div className="flex items-center gap-2">
+              <DemoMark />
+              <ViewAllLink href="/reviews" />
+            </div>
+          }
         >
           <PendingReviewsList reviews={data.pendingReviews} />
         </SectionPanel>
+      </div>
+
+      <div className="mt-4">
         <SectionPanel
           title="Recent Activity"
-          description="What changed across the studio"
+          action={
+            <div className="flex items-center gap-2">
+              <DemoMark />
+              <Link
+                href="/activity"
+                className="text-xs font-medium text-brand-orange hover:underline"
+              >
+                View all activity
+              </Link>
+            </div>
+          }
         >
           <ActivityTimeline
             items={data.recentActivity}

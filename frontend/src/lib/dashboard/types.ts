@@ -1,18 +1,3 @@
-/**
- * Dashboard domain types.
- *
- * TODO: Replace mock fields with backend aggregation endpoints when available
- * (daily publishing goal, dashboard summary counts, recent activity feed).
- */
-
-export type DailyGoal = {
-  label: string;
-  completed: number;
-  target: number;
-  /** When true, values are demo/mock — not live backend data. */
-  isDemo: boolean;
-};
-
 export type DashboardMetrics = {
   projects: number;
   knowledgePacks: number;
@@ -20,6 +5,17 @@ export type DashboardMetrics = {
   draftScripts: number;
   pendingReviews: number;
   approvedScripts: number;
+  /** True when any metric cards still use demo values. */
+  isDemo: boolean;
+  /** True when the Projects metric comes from GET /projects total. */
+  projectsLive: boolean;
+};
+
+export type DailyGoal = {
+  label: string;
+  completed: number;
+  target: number;
+  /** When true, values are demo/mock — not live backend data. */
   isDemo: boolean;
 };
 
@@ -61,6 +57,7 @@ export type DashboardData = {
   metrics: DashboardMetrics;
   dailyGoal: DailyGoal;
   recentProjects: RecentProject[];
+  recentProjectsLive: boolean;
   recentScripts: RecentScript[];
   pendingReviews: PendingReview[];
   recentActivity: RecentActivity[];
