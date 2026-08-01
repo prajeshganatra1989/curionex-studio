@@ -4,8 +4,10 @@ import type {
   CategoryCreateInput,
   ContentVersionSummary,
   KnowledgePackCreateInput,
+  KnowledgePackDetail,
   KnowledgePackListResponse,
-  KnowledgePackSummary,
+  KnowledgePackSection,
+  KnowledgePackSectionUpdateInput,
   Project,
   ProjectCreateInput,
   ProjectListParams,
@@ -96,8 +98,24 @@ export function createKnowledgePack(
   projectId: string,
   payload: KnowledgePackCreateInput,
 ) {
-  return client.post<KnowledgePackSummary>(
+  return client.post<KnowledgePackDetail>(
     `/projects/${projectId}/knowledge-packs`,
+    payload,
+  );
+}
+
+export function getKnowledgePack(client: ApiClient, knowledgePackId: string) {
+  return client.get<KnowledgePackDetail>(`/knowledge-packs/${knowledgePackId}`);
+}
+
+export function updateKnowledgePackSection(
+  client: ApiClient,
+  knowledgePackId: string,
+  sectionKey: string,
+  payload: KnowledgePackSectionUpdateInput,
+) {
+  return client.patch<KnowledgePackSection>(
+    `/knowledge-packs/${knowledgePackId}/sections/${sectionKey}`,
     payload,
   );
 }

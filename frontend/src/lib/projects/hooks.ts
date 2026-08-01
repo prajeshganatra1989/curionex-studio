@@ -147,12 +147,20 @@ export function useCreateTag() {
   });
 }
 
-export function useProjectKnowledgePacks(projectId: string) {
+export function useProjectKnowledgePacks(
+  projectId: string,
+  params: { page?: number; page_size?: number } = {},
+) {
+  const page = params.page ?? 1;
+  const pageSize = params.page_size ?? 5;
   const { api, status } = useAuth();
   return useQuery({
-    queryKey: projectKeys.packs(projectId),
+    queryKey: [...projectKeys.packs(projectId), { page, page_size: pageSize }],
     queryFn: () =>
-      listProjectKnowledgePacks(api, projectId, { page: 1, page_size: 5 }),
+      listProjectKnowledgePacks(api, projectId, {
+        page,
+        page_size: pageSize,
+      }),
     enabled: status === "authenticated" && Boolean(projectId),
   });
 }

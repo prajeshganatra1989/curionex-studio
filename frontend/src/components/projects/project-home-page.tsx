@@ -253,12 +253,14 @@ export function ProjectHomePage() {
               </p>
               <ul className="space-y-2">
                 {packs.data.items.slice(0, 3).map((pack) => (
-                  <li
-                    key={pack.id}
-                    className="flex items-center justify-between gap-2 rounded-md px-2 py-2 text-sm hover:bg-surface-hover"
-                  >
-                    <span className="truncate">{pack.name}</span>
-                    <StatusBadge status={pack.status} />
+                  <li key={pack.id}>
+                    <Link
+                      href={`/projects/${projectId}/knowledge-packs/${pack.id}`}
+                      className="flex items-center justify-between gap-2 rounded-md px-2 py-2 text-sm hover:bg-surface-hover"
+                    >
+                      <span className="truncate">{pack.name}</span>
+                      <StatusBadge status={pack.status} />
+                    </Link>
                   </li>
                 ))}
               </ul>

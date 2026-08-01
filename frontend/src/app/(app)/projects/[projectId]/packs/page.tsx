@@ -1,12 +1,7 @@
-import { ProjectSectionPlaceholder } from "@/components/projects/project-home-page";
+import { ProjectKnowledgePacksPage } from "@/components/projects/project-knowledge-packs-page";
 
 export const metadata = { title: "Knowledge Packs" };
 
-export default function ProjectPacksPage() {
-  return (
-    <ProjectSectionPlaceholder
-      title="Knowledge Packs"
-      description="The full Knowledge Pack editor arrives in a later sprint. Use Create Knowledge Pack from project overview for now."
-    />
-  );
+export default function ProjectPacksRoute() {
+  return <ProjectKnowledgePacksPage />;
 }

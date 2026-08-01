@@ -4,15 +4,17 @@
 
 `/projects/[projectId]` — project control centre (Overview).
 
-Additional tabs route to lightweight placeholders for later sprints:
+Additional tabs:
 
-- `/projects/[projectId]/packs`
-- `/projects/[projectId]/scripts`
-- `/projects/[projectId]/versions`
-- `/projects/[projectId]/workflow`
-- `/projects/[projectId]/activity`
+- `/projects/[projectId]/packs` — Knowledge Pack list (opens editor)
+- `/projects/[projectId]/scripts` — placeholder
+- `/projects/[projectId]/versions` — placeholder
+- `/projects/[projectId]/workflow` — placeholder
+- `/projects/[projectId]/activity` — placeholder
 
-Only Overview is fully implemented in Sprint 2.
+Knowledge Pack Editor lives at
+`/projects/[projectId]/knowledge-packs/[knowledgePackId]`
+(see `007-knowledge-pack-editor.md`).
 
 ## Overview sections
 
@@ -34,7 +36,8 @@ Counts use paginated list `total` fields — no full-table downloads.
 ### Create Knowledge Pack
 
 Modal → `POST /projects/{id}/knowledge-packs` (`name`, `description`, `status`).
-Backend creates section shells. No section editor in this sprint.
+Backend creates section shells, then the UI navigates to the Knowledge Pack
+Editor.
 
 ### Create Script
 
@@ -42,7 +45,7 @@ Modal → `POST /projects/{id}/scripts` (`title`, `description`,
 `knowledge_pack_id`). Knowledge Pack options are loaded from the same project
 only. Backend creates document shells + workflow.
 
-## Future editor navigation
+## Editor navigation
 
-Tabs and CTAs point at future editor routes/placeholders. Do not build the full
-Knowledge Pack Editor or Script Workspace here.
+Knowledge Pack rows open the research editor. Script Workspace remains a later
+sprint.

@@ -88,6 +88,26 @@ export type KnowledgePackSummary = {
   updated_at: string;
 };
 
+export type KnowledgePackSection = {
+  id: string;
+  knowledge_pack_id: string;
+  section_key: string;
+  title: string;
+  content: string;
+  position: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type KnowledgePackDetail = KnowledgePackSummary & {
+  sections: KnowledgePackSection[];
+};
+
+export type KnowledgePackSectionUpdateInput = {
+  title?: string;
+  content?: string;
+};
+
 export type KnowledgePackListResponse = {
   items: KnowledgePackSummary[];
   page: number;
