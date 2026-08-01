@@ -8,6 +8,14 @@ from app.schemas.auth import (
     UserResponse,
     normalize_email,
 )
+from app.schemas.content_version import (
+    ApprovalRequestCreate,
+    ApprovalResponse,
+    ApprovalReviewRequest,
+    ContentVersionCreate,
+    ContentVersionListResponse,
+    ContentVersionResponse,
+)
 from app.schemas.knowledge_pack import (
     KnowledgePackCreate,
     KnowledgePackListResponse,
@@ -38,11 +46,17 @@ from app.schemas.rbac import (
 )
 
 __all__ = [
+    "ApprovalRequestCreate",
+    "ApprovalResponse",
+    "ApprovalReviewRequest",
     "AuditLogListResponse",
     "AuditLogResponse",
     "CategoryCreate",
     "CategoryResponse",
     "CategoryUpdate",
+    "ContentVersionCreate",
+    "ContentVersionListResponse",
+    "ContentVersionResponse",
     "KnowledgePackCreate",
     "KnowledgePackListResponse",
     "KnowledgePackReorderRequest",
