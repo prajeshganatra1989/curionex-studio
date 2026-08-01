@@ -121,6 +121,7 @@ def create_content_version(
     creator: User,
     ip_address: str | None = None,
     user_agent: str | None = None,
+    commit: bool = True,
 ) -> ContentVersion:
     assert_project_access(db, project_id, creator)
     version_number = allocate_next_version_number(db, project_id)
@@ -148,13 +149,15 @@ def create_content_version(
             ip_address=ip_address,
             user_agent=user_agent,
         )
-        db.commit()
+        if commit:
+            db.commit()
     except IntegrityError as exc:
         db.rollback()
         raise ConflictError(
             "Unable to create content version due to a conflict."
         ) from exc
-    db.refresh(version)
+    if commit:
+        db.refresh(version)
     return version
 
 
@@ -284,6 +287,7 @@ def request_approval(
     requester: User,
     ip_address: str | None = None,
     user_agent: str | None = None,
+    commit: bool = True,
 ) -> Approval:
     version = get_content_version_for_user(db, version_id, requester)
     if version.status == VERSION_STATUS_ARCHIVED:
@@ -324,11 +328,13 @@ def request_approval(
             ip_address=ip_address,
             user_agent=user_agent,
         )
-        db.commit()
+        if commit:
+            db.commit()
     except IntegrityError as exc:
         db.rollback()
         raise ConflictError("A pending approval already exists for this version.") from exc
-    db.refresh(approval)
+    if commit:
+        db.refresh(approval)
     return approval
 
 
@@ -373,6 +379,29 @@ def _review_approval(
         ip_address=ip_address,
         user_agent=user_agent,
     )
+
+    # Orchestrate linked ContentWorkflow when present (M2I). Preserve M2G if none.
+    from app.services import workflow_service
+
+    if new_status == APPROVAL_STATUS_APPROVED:
+        workflow_service.sync_workflow_after_approval_decision(
+            db,
+            content_version_id=version.id,
+            approved=True,
+            actor=reviewer,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+    elif new_status == APPROVAL_STATUS_REJECTED:
+        workflow_service.sync_workflow_after_approval_decision(
+            db,
+            content_version_id=version.id,
+            approved=False,
+            actor=reviewer,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+
     db.commit()
     db.refresh(approval)
     return approval

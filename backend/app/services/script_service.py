@@ -166,6 +166,15 @@ def create_script(
                     position=definition.position,
                 )
             )
+        from app.services.workflow_service import create_initial_workflow
+
+        create_initial_workflow(
+            db,
+            script.id,
+            actor_user_id=creator.id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
         record_audit_event(
             db,
             actor_user_id=creator.id,

@@ -58,3 +58,13 @@ ACTION_SCRIPT_CREATED = "script.created"
 ACTION_SCRIPT_UPDATED = "script.updated"
 ACTION_SCRIPT_ARCHIVED = "script.archived"
 ACTION_SCRIPT_DOCUMENT_UPDATED = "script.document_updated"
+
+ENTITY_WORKFLOW = "workflow"
+
+ACTION_WORKFLOW_CREATED = "workflow.created"
+ACTION_WORKFLOW_STAGE_CHANGED = "workflow.stage_changed"
+ACTION_WORKFLOW_VERSION_CREATED = "workflow.version_created"
+ACTION_WORKFLOW_REVIEW_SUBMITTED = "workflow.review_submitted"
+ACTION_WORKFLOW_COMPLETED = "workflow.completed"
+ACTION_WORKFLOW_RETURNED_TO_WORKSPACE = "workflow.returned_to_workspace"
+ACTION_WORKFLOW_ARCHIVED = "workflow.archived"

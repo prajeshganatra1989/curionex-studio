@@ -7,12 +7,14 @@ from app.models.project import Category, Project, ProjectMember, ProjectTag, Tag
 from app.models.rbac import Permission, Role, RolePermission, UserRole
 from app.models.script import Script, ScriptDocument
 from app.models.user import User
+from app.models.workflow import ContentWorkflow
 
 __all__ = [
     "Approval",
     "AuditLog",
     "Category",
     "ContentVersion",
+    "ContentWorkflow",
     "KnowledgePack",
     "KnowledgePackSection",
     "Permission",
