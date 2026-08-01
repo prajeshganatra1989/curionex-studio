@@ -1,19 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
+  type ReactNode,
 } from "react";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, ArrowRight, List, Save } from "lucide-react";
 
-import { ProgressPanel } from "@/components/knowledge-packs/progress-panel";
-import { SectionEditor } from "@/components/knowledge-packs/section-editor";
-import { SectionNav } from "@/components/knowledge-packs/section-nav";
+import { KnowledgePackSection } from "@/components/knowledge-packs/knowledge-pack-section";
+import { ProgressSidebar } from "@/components/knowledge-packs/progress-sidebar";
+import { SaveIndicator } from "@/components/knowledge-packs/save-indicator";
+import { SectionDrawer } from "@/components/knowledge-packs/section-drawer";
+import { SectionNavigator } from "@/components/knowledge-packs/section-navigator";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
@@ -21,10 +23,8 @@ import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useToast } from "@/components/ui/toast";
 import { ApiError } from "@/lib/api/client";
-import {
-  updateKnowledgePackSection,
-} from "@/lib/api/projects";
-import type { KnowledgePackSection } from "@/lib/api/types";
+import { updateKnowledgePackSection } from "@/lib/api/projects";
+import type { KnowledgePackSection as SectionRow } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/auth-context";
 import {
   knowledgePackKeys,
@@ -39,7 +39,7 @@ type DraftMap = Record<string, string>;
 type SavedAtMap = Record<string, string>;
 type ErrorMap = Record<string, string>;
 
-function sectionsToDraft(sections: KnowledgePackSection[]): DraftMap {
+function sectionsToDraft(sections: SectionRow[]): DraftMap {
   const draft: DraftMap = {};
   for (const meta of SECTION_ORDER) {
     const match = sections.find((s) => s.section_key === meta.key);
@@ -48,7 +48,7 @@ function sectionsToDraft(sections: KnowledgePackSection[]): DraftMap {
   return draft;
 }
 
-function sectionsToSavedAt(sections: KnowledgePackSection[]): SavedAtMap {
+function sectionsToSavedAt(sections: SectionRow[]): SavedAtMap {
   const map: SavedAtMap = {};
   for (const meta of SECTION_ORDER) {
     const match = sections.find((s) => s.section_key === meta.key);
@@ -65,10 +65,15 @@ function latestTimestamp(map: SavedAtMap): string | null {
   );
 }
 
-export function KnowledgePackEditorPage() {
+function WorkspaceShell({ children }: { children: ReactNode }) {
+  return <div className="min-h-full bg-background">{children}</div>;
+}
+
+export function KnowledgePackEditor() {
   const params = useParams<{ projectId: string; knowledgePackId: string }>();
   const projectId = params.projectId;
   const knowledgePackId = params.knowledgePackId;
+  const router = useRouter();
   const { api } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -83,7 +88,8 @@ export function KnowledgePackEditorPage() {
   const [activeKey, setActiveKey] = useState<string>(SECTION_ORDER[0]!.key);
   const [saving, setSaving] = useState(false);
   const [hydrated, setHydrated] = useState(false);
-  const scrollRootRef = useRef<HTMLDivElement>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [justSavedAt, setJustSavedAt] = useState<number | null>(null);
 
   useEffect(() => {
     if (!packQuery.data || hydrated) return;
@@ -96,6 +102,7 @@ export function KnowledgePackEditorPage() {
 
   useEffect(() => {
     setHydrated(false);
+    setJustSavedAt(null);
   }, [knowledgePackId]);
 
   const dirtyKeys = useMemo(
@@ -108,19 +115,25 @@ export function KnowledgePackEditorPage() {
   const isDirty = dirtyKeys.length > 0;
   const packUpdated = latestTimestamp(savedAt) ?? packQuery.data?.updated_at ?? null;
 
-  const saveStatusLabel = saving
-    ? "Saving..."
-    : isDirty
-      ? "Unsaved changes"
-      : packUpdated
-        ? `Saved ${formatRelativeTime(packUpdated)}`
-        : "Saved";
+  const savedLabel = useMemo(() => {
+    if (justSavedAt && Date.now() - justSavedAt < 60_000) return "just now";
+    if (!packUpdated) return null;
+    return formatRelativeTime(packUpdated);
+  }, [justSavedAt, packUpdated]);
 
   const scrollToSection = useCallback((key: string) => {
     const el = document.getElementById(`section-${key}`);
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", block: "start" });
     setActiveKey(key);
+    setDrawerOpen(false);
+  }, []);
+
+  const onSectionChange = useCallback((key: string, value: string) => {
+    setDrafts((prev) => {
+      if (prev[key] === value) return prev;
+      return { ...prev, [key]: value };
+    });
   }, []);
 
   useEffect(() => {
@@ -142,7 +155,7 @@ export function KnowledgePackEditorPage() {
       },
       {
         root: null,
-        rootMargin: "-20% 0px -55% 0px",
+        rootMargin: "-18% 0px -55% 0px",
         threshold: [0.1, 0.25, 0.5],
       },
     );
@@ -160,6 +173,7 @@ export function KnowledgePackEditorPage() {
       return next;
     });
 
+    const snapshot = drafts;
     const results = await Promise.all(
       keys.map(async (sectionKey) => {
         try {
@@ -167,7 +181,7 @@ export function KnowledgePackEditorPage() {
             api,
             knowledgePackId,
             sectionKey,
-            { content: drafts[sectionKey] ?? "" },
+            { content: snapshot[sectionKey] ?? "" },
           );
           return { sectionKey, ok: true as const, updated };
         } catch (err) {
@@ -193,6 +207,7 @@ export function KnowledgePackEditorPage() {
       }
     }
 
+    // Keep local drafts (never lose text). Only advance baselines for successes.
     setBaseline(nextBaseline);
     setSavedAt(nextSavedAt);
     setErrors((prev) => ({ ...prev, ...nextErrors }));
@@ -203,6 +218,7 @@ export function KnowledgePackEditorPage() {
     });
 
     if (successCount === keys.length) {
+      setJustSavedAt(Date.now());
       toast({ title: "Knowledge Pack saved", tone: "success" });
     } else if (successCount > 0) {
       toast({
@@ -219,24 +235,18 @@ export function KnowledgePackEditorPage() {
     }
   }
 
-  async function handleSave() {
-    await saveSections(dirtyKeys);
-  }
-
-  async function handleRetry(sectionKey: string) {
-    await saveSections([sectionKey]);
-  }
-
   if (packQuery.isLoading || projectQuery.isLoading) {
     return (
-      <div className="px-4 py-6 sm:px-6" data-testid="kp-editor-loading">
-        <LoadingSkeleton className="mb-4 h-20" />
-        <div className="grid gap-4 lg:grid-cols-[14rem_minmax(0,1fr)_16rem]">
-          <LoadingSkeleton className="hidden h-80 lg:block" />
-          <LoadingSkeleton className="h-[32rem]" />
-          <LoadingSkeleton className="hidden h-80 xl:block" />
+      <WorkspaceShell>
+        <div className="px-4 py-8 sm:px-8" data-testid="kp-editor-loading">
+          <LoadingSkeleton className="mb-6 h-24" />
+          <div className="grid gap-8 lg:grid-cols-[13rem_minmax(0,1fr)_15rem]">
+            <LoadingSkeleton className="hidden h-96 lg:block" />
+            <LoadingSkeleton className="h-[36rem]" />
+            <LoadingSkeleton className="hidden h-96 xl:block" />
+          </div>
         </div>
-      </div>
+      </WorkspaceShell>
     );
   }
 
@@ -244,60 +254,68 @@ export function KnowledgePackEditorPage() {
     const status = packQuery.error instanceof ApiError ? packQuery.error.status : 0;
     if (status === 404) {
       return (
-        <div className="px-4 py-10 sm:px-6">
-          <EmptyState
-            title="Knowledge Pack not found"
-            description="It may have been archived or you may not have access."
-            action={
-              <Link
-                href={`/projects/${projectId}`}
-                className="text-sm text-brand-orange underline"
-              >
-                Back to project
-              </Link>
-            }
-          />
-        </div>
+        <WorkspaceShell>
+          <div className="px-4 py-16 sm:px-8">
+            <EmptyState
+              title="Knowledge Pack not found"
+              description="It may have been archived or you may not have access."
+              action={
+                <Link
+                  href={`/projects/${projectId}`}
+                  className="text-sm text-brand-orange underline"
+                >
+                  Back to Project
+                </Link>
+              }
+            />
+          </div>
+        </WorkspaceShell>
       );
     }
     if (status === 403) {
       return (
-        <div className="px-4 py-10 sm:px-6">
-          <EmptyState
-            title="Access restricted"
-            description="You do not have permission to view this Knowledge Pack."
-          />
-        </div>
+        <WorkspaceShell>
+          <div className="px-4 py-16 sm:px-8">
+            <EmptyState
+              title="Access restricted"
+              description="You do not have permission to view this Knowledge Pack."
+            />
+          </div>
+        </WorkspaceShell>
       );
     }
     return (
-      <div className="px-4 py-10 sm:px-6">
-        <ErrorState
-          message={
-            packQuery.error instanceof ApiError
-              ? packQuery.error.detail
-              : "Unable to load Knowledge Pack."
-          }
-          action={
-            <button
-              type="button"
-              className="text-sm text-brand-orange underline"
-              onClick={() => void packQuery.refetch()}
-            >
-              Try again
-            </button>
-          }
-        />
-      </div>
+      <WorkspaceShell>
+        <div className="px-4 py-16 sm:px-8">
+          <ErrorState
+            message={
+              packQuery.error instanceof ApiError
+                ? packQuery.error.detail
+                : "Unable to load Knowledge Pack."
+            }
+            action={
+              <button
+                type="button"
+                className="text-sm text-brand-orange underline"
+                onClick={() => void packQuery.refetch()}
+              >
+                Try again
+              </button>
+            }
+          />
+        </div>
+      </WorkspaceShell>
     );
   }
 
   if (!hydrated) {
     return (
-      <div className="px-4 py-6 sm:px-6" data-testid="kp-editor-hydrating">
-        <LoadingSkeleton className="mb-4 h-20" />
-        <LoadingSkeleton className="h-[32rem]" />
-      </div>
+      <WorkspaceShell>
+        <div className="px-4 py-8 sm:px-8" data-testid="kp-editor-hydrating">
+          <LoadingSkeleton className="mb-6 h-24" />
+          <LoadingSkeleton className="h-[36rem]" />
+        </div>
+      </WorkspaceShell>
     );
   }
 
@@ -305,17 +323,25 @@ export function KnowledgePackEditorPage() {
   const project = projectQuery.data;
 
   return (
-    <div ref={scrollRootRef} className="min-h-full">
-      <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur">
-        <div className="flex flex-col gap-3 px-4 py-3 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+    <WorkspaceShell>
+      <header className="sticky top-0 z-20 border-b border-border/80 bg-background/90 backdrop-blur-md">
+        <div className="mx-auto flex max-w-[96rem] flex-col gap-4 px-4 py-4 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
-            <div className="mb-1 flex items-center gap-2">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-surface text-muted-foreground lg:hidden"
+                aria-label="Open section navigator"
+                onClick={() => setDrawerOpen(true)}
+              >
+                <List className="h-4 w-4" />
+              </button>
               <Link
                 href={`/projects/${projectId}`}
-                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition hover:text-foreground"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
-                Project
+                Back to Project
               </Link>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -326,26 +352,24 @@ export function KnowledgePackEditorPage() {
               ) : null}
               <StatusBadge status={pack.status} />
             </div>
-            <h1 className="mt-1 truncate text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+            <h1 className="mt-1.5 truncate text-2xl font-semibold tracking-tight text-foreground">
               {pack.name}
             </h1>
-            <p className="mt-0.5 truncate text-sm text-muted-foreground">
+            <p className="mt-1 truncate text-sm text-muted-foreground">
               {project?.name ?? "Project"}
               {packUpdated ? ` · Updated ${formatRelativeTime(packUpdated)}` : ""}
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <p
-              className="text-sm text-muted-foreground"
-              aria-live="polite"
-              data-testid="save-status"
-            >
-              {saveStatusLabel}
-            </p>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <SaveIndicator
+              saving={saving}
+              dirty={isDirty}
+              savedLabel={savedLabel}
+            />
             <Button
               type="button"
-              onClick={() => void handleSave()}
+              onClick={() => void saveSections(dirtyKeys)}
               loading={saving}
               disabled={!isDirty || saving}
               aria-label="Save Knowledge Pack"
@@ -353,27 +377,34 @@ export function KnowledgePackEditorPage() {
               <Save className="h-4 w-4" />
               Save
             </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => router.push(`/projects/${projectId}/scripts`)}
+            >
+              Generate Script
+              <ArrowRight className="h-4 w-4" />
+            </Button>
           </div>
-        </div>
-
-        <div className="border-t border-border px-4 py-2 lg:hidden sm:px-6">
-          <SectionNav
-            sections={SECTION_ORDER}
-            contents={drafts}
-            activeKey={activeKey}
-            onNavigate={scrollToSection}
-            orientation="horizontal"
-          />
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-[90rem] gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[14rem_minmax(0,1fr)] xl:grid-cols-[14rem_minmax(0,1fr)_16rem]">
+      <SectionDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)}>
+        <SectionNavigator
+          sections={SECTION_ORDER}
+          contents={drafts}
+          activeKey={activeKey}
+          onNavigate={scrollToSection}
+        />
+      </SectionDrawer>
+
+      <div className="mx-auto grid max-w-[96rem] gap-10 px-4 py-8 sm:px-8 lg:grid-cols-[13rem_minmax(0,42rem)] lg:justify-between xl:grid-cols-[13rem_minmax(0,42rem)_15rem]">
         <aside className="hidden lg:block">
-          <div className="sticky top-28">
-            <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <div className="sticky top-32">
+            <p className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               Sections
             </p>
-            <SectionNav
+            <SectionNavigator
               sections={SECTION_ORDER}
               contents={drafts}
               activeKey={activeKey}
@@ -382,29 +413,30 @@ export function KnowledgePackEditorPage() {
           </div>
         </aside>
 
-        <div className="min-w-0">
+        <div className="min-w-0 divide-y divide-border/70">
           {SECTION_ORDER.map((meta) => (
-            <SectionEditor
+            <KnowledgePackSection
               key={meta.key}
               meta={meta}
               content={drafts[meta.key] ?? ""}
               savedAt={savedAt[meta.key] ?? null}
               dirty={dirtyKeys.includes(meta.key as SectionKey)}
               error={errors[meta.key] ?? null}
-              onChange={(value) =>
-                setDrafts((prev) => ({ ...prev, [meta.key]: value }))
-              }
-              onRetry={() => void handleRetry(meta.key)}
+              onChange={(value) => onSectionChange(meta.key, value)}
+              onRetry={() => void saveSections([meta.key])}
             />
           ))}
         </div>
 
         <div className="hidden xl:block">
-          <div className="sticky top-28">
-            <ProgressPanel sections={SECTION_ORDER} contents={drafts} />
+          <div className="sticky top-32">
+            <ProgressSidebar sections={SECTION_ORDER} contents={drafts} />
           </div>
         </div>
       </div>
-    </div>
+    </WorkspaceShell>
   );
 }
+
+/** @deprecated Prefer KnowledgePackEditor */
+export const KnowledgePackEditorPage = KnowledgePackEditor;

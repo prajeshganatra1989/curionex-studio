@@ -1,67 +1,75 @@
-# Knowledge Pack Editor
+# Knowledge Pack Research Workspace
 
 ## Route
 
 `/projects/{projectId}/knowledge-packs/{knowledgePackId}`
 
-This is the primary research writing workspace — one continuous scrolling page
-(no tabs, no accordion routes).
+Primary writing environment — one calm, vertically scrolling page.
+Not a CRUD admin screen.
 
-## Layout
+## Architecture
 
-| Viewport | Layout |
-|----------|--------|
-| Desktop (`xl`) | Left section nav · Center editors · Right progress |
-| Tablet (`lg`) | Left section nav · Center editors (progress hidden) |
-| Mobile | Horizontal section nav under header · single column editors |
+```
+KnowledgePackEditor
+├── Header (Back · SaveIndicator · Save · Generate Script)
+├── SectionDrawer (mobile)
+├── SectionNavigator (desktop sticky)
+├── KnowledgePackSection × 7
+│   ├── WordCounter
+│   ├── CharacterCounter
+│   └── inline error + Retry
+└── ProgressSidebar (xl sticky)
+    └── CompletionBadge × 7
+```
 
-## Sections (fixed order)
+Data flow:
 
-1. Research  
-2. Facts  
-3. Sources  
-4. Audience  
-5. Content Angle  
-6. Key Insights  
-7. Additional Context  
+1. `useKnowledgePack` → `GET /knowledge-packs/{id}` (includes sections)
+2. Local draft map hydrated once from server content
+3. Dirty keys = draft ≠ baseline
+4. Save → `PATCH /knowledge-packs/{id}/sections/{section_key}` for dirty keys only
 
-Each section shows title, description, plain-text editor, character count, and
-last-saved time. Empty sections show writing guidance (not AI).
+## Components
 
-## APIs
-
-| Action | Endpoint |
-|--------|----------|
-| Load pack + sections | `GET /knowledge-packs/{id}` |
-| Save section content | `PATCH /knowledge-packs/{id}/sections/{section_key}` |
-| Project header context | `GET /projects/{id}` |
-
-No duplicate save endpoints. Only modified sections are PATCHed.
+| Component | Role |
+|-----------|------|
+| `KnowledgePackEditor` | Workspace shell, query/save orchestration |
+| `KnowledgePackSection` | Memoized section title, helper, textarea, counters |
+| `SectionNavigator` | Sticky mini-nav with completion badges |
+| `SectionDrawer` | Mobile navigator drawer |
+| `ProgressSidebar` | Completion %, words, characters, reading time |
+| `SaveIndicator` | Unsaved / Saving / Saved just now |
+| `WordCounter` / `CharacterCounter` | Local metrics |
+| `CompletionBadge` | ✔ / ○ |
 
 ## Save strategy
 
-- Manual Save only (top-right). No autosave.
-- Dirty indicator: `Unsaved changes` / `Saving...` / `Saved {relative time}`
-- Optimistic UI is conservative: local drafts always retained on failure
-- Successful section responses update baselines; failed sections keep drafts +
-  inline error with Retry
-
-## Progress (local)
-
-Computed from current draft content — never invented:
-
-- Completion % = sections with non-whitespace content / 7
-- Per-section Done / Empty
-- Word count across all sections
-- Estimated reading time at 200 wpm
+- Manual only — no autosave
+- Save disabled until dirty
+- Optimistic-safe: drafts never cleared on failure
+- Successful sections advance baseline; failures keep text + Retry
+- Toast on success / partial / total failure
 
 ## Navigation
 
-Left (or horizontal on mobile) mini-nav smooth-scrolls to section anchors and
-highlights the section currently in view (IntersectionObserver).
+- Desktop: sticky left navigator, smooth-scroll, IntersectionObserver highlight
+- Mobile: list button → drawer navigator
+- Browser find-in-page works on native textareas
 
-## Entry points
+## Progress (local only)
 
-- Create Knowledge Pack → navigates into the editor
-- Project Home pack rows → editor
-- Project Knowledge Packs list (`/projects/{id}/packs`) → editor
+- Completion % = non-empty sections / 7
+- Word + character totals from current drafts
+- Reading time at 200 wpm
+- Never invent values
+
+## Performance
+
+- Section editors and side panels wrapped in `memo`
+- Draft updates skip no-op identical values
+- Progress stats memoized from content map
+- TanStack Query for pack/project load; targeted invalidation after save
+
+## Generate Script
+
+Navigates to `/projects/{projectId}/scripts` (placeholder). Does not generate content.

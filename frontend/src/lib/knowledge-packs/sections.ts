@@ -12,9 +12,9 @@ export type SectionKey =
 export type SectionMeta = {
   key: SectionKey;
   title: string;
-  /** Short description shown under the section title. */
+  /** Short helper description under the title. */
   description: string;
-  /** Empty-state writing guidance. */
+  /** Empty-state / placeholder guidance. */
   guidance: string;
 };
 
@@ -22,44 +22,44 @@ export const SECTION_ORDER: SectionMeta[] = [
   {
     key: "research",
     title: "Research",
-    description: "Research and background information",
-    guidance: "Collect raw information from trusted sources.",
+    description: "Collect everything useful.",
+    guidance: "Collect everything useful from trusted notes and references.",
   },
   {
     key: "facts",
     title: "Facts",
-    description: "Verified factual information",
+    description: "Verified information only.",
     guidance: "List verified facts only.",
   },
   {
     key: "sources",
     title: "Sources",
-    description: "Sources and references used during research",
-    guidance: "Record URLs, books or papers.",
+    description: "Books · URLs · Papers",
+    guidance: "Record books, URLs, or papers.",
   },
   {
     key: "audience",
     title: "Audience",
-    description: "Intended audience information",
-    guidance: "Describe who this video is for and what they already know.",
+    description: "Who is this video for?",
+    guidance: "Who is this video for?",
   },
   {
     key: "content_angle",
     title: "Content Angle",
-    description: "Core angle or perspective of the content",
-    guidance: "Define the unique angle that makes this video worth watching.",
+    description: "What's the unique perspective?",
+    guidance: "What's the unique perspective?",
   },
   {
     key: "key_insights",
     title: "Key Insights",
-    description: "Important insights and takeaways",
-    guidance: "Capture the insights viewers should remember.",
+    description: "What should viewers remember?",
+    guidance: "What should viewers remember?",
   },
   {
     key: "additional_context",
     title: "Additional Context",
-    description: "Additional context that does not fit other sections",
-    guidance: "Add anything else that supports the script later.",
+    description: "Anything else useful.",
+    guidance: "Anything else useful for scripting later.",
   },
 ];
 
