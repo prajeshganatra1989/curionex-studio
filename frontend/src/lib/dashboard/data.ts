@@ -1,16 +1,19 @@
+import type { ApiClient } from "@/lib/api/client";
+import { listProjects } from "@/lib/api/projects";
 import type { DashboardData } from "@/lib/dashboard/types";
 
 /**
- * Isolated deterministic mock dashboard payload.
- * Components must not hard-code these values — load via getDashboardData().
+ * Isolated deterministic mock dashboard payload for modules that are not
+ * live yet. Components must not hard-code these values — load via getDashboardData().
  *
- * TODO: Wire to live APIs:
- * - projects list/count
- * - knowledge packs count
- * - scripts / statuses
- * - approvals pending
- * - audit.view activity feed
- * - future daily publishing goal tracker
+ * Live in Sprint 2:
+ * - Projects metric (list total)
+ * - Recent Projects panel
+ *
+ * Still demo:
+ * - Knowledge Packs / Scripts / Drafts / Reviews / Approved metrics
+ * - Daily goal
+ * - Recent Scripts / Pending Reviews / Activity
  */
 export const DEMO_DASHBOARD: DashboardData = {
   metrics: {
@@ -21,6 +24,7 @@ export const DEMO_DASHBOARD: DashboardData = {
     pendingReviews: 5,
     approvedScripts: 31,
     isDemo: true,
+    projectsLive: false,
   },
   dailyGoal: {
     label: "2 videos per day",
@@ -54,6 +58,7 @@ export const DEMO_DASHBOARD: DashboardData = {
       updatedAt: new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString(),
     },
   ],
+  recentProjectsLive: false,
   recentScripts: [
     {
       id: "s1",
@@ -128,8 +133,26 @@ export const DEMO_DASHBOARD: DashboardData = {
   activityRestricted: false,
 };
 
-export async function getDashboardData(): Promise<DashboardData> {
-  // Frontend-first: return isolated demo data.
-  // Later: merge live counts from efficient APIs when endpoints exist.
-  return DEMO_DASHBOARD;
+export async function getDashboardData(api: ApiClient): Promise<DashboardData> {
+  const projects = await listProjects(api, { page: 1, page_size: 5 });
+
+  return {
+    ...DEMO_DASHBOARD,
+    metrics: {
+      ...DEMO_DASHBOARD.metrics,
+      projects: projects.total,
+      projectsLive: true,
+      // Remaining metric cards are still demo-backed.
+      isDemo: true,
+    },
+    recentProjects: projects.items.map((project) => ({
+      id: project.id,
+      projectCode: project.project_code,
+      name: project.name,
+      category: project.category?.name ?? null,
+      status: project.status,
+      updatedAt: project.updated_at,
+    })),
+    recentProjectsLive: true,
+  };
 }

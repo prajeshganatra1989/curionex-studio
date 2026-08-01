@@ -58,8 +58,8 @@ export function LoginForm() {
       onSubmit={handleSubmit(onSubmit)}
       noValidate
     >
-      <div className="flex flex-col items-center gap-3 text-center">
-        <BrandLogo className="h-16" priority />
+      <div className="flex flex-col items-center gap-4 text-center">
+        <BrandLogo variant="hero" priority />
         <div>
           <h1 className="text-xl font-semibold text-foreground">
             Sign in to Curionex Studio

@@ -24,7 +24,7 @@ export function RecentProjectsList({ projects }: RecentProjectsListProps) {
       {projects.map((project) => (
         <li key={project.id}>
           <Link
-            href="/projects"
+            href={`/projects/${project.id}`}
             className="flex items-center gap-3 rounded-md px-2 py-3 transition hover:bg-surface-hover"
           >
             <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface-elevated text-xs font-semibold text-brand-orange">

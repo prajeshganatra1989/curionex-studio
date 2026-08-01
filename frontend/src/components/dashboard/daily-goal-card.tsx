@@ -15,12 +15,12 @@ export function DailyGoalCard({ goal }: DailyGoalCardProps) {
   const offset = circumference - (pct / 100) * circumference;
 
   return (
-    <article className="panel relative overflow-hidden p-5">
+    <article className="panel relative h-full overflow-hidden p-5">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(232,114,12,0.14),transparent_55%)]"
       />
-      <div className="relative flex items-center justify-between gap-4">
+      <div className="relative flex h-full items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-medium text-muted-foreground">
@@ -28,22 +28,20 @@ export function DailyGoalCard({ goal }: DailyGoalCardProps) {
             </h2>
             {goal.isDemo ? (
               <span className="rounded-md border border-border bg-surface-elevated px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                Demo data
+                Demo
               </span>
             ) : null}
           </div>
           <p className="mt-2 text-lg font-semibold text-foreground">
-            {goal.label}
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            <span className="tabular-nums text-foreground">
+            <span className="tabular-nums">
               {goal.completed} / {goal.target}
             </span>{" "}
-            complete
+            Videos
           </p>
+          <p className="mt-1 text-sm text-muted-foreground">{goal.label}</p>
         </div>
         <div
-          className="relative h-24 w-24"
+          className="relative h-24 w-24 shrink-0"
           role="img"
           aria-label={`${pct}% of daily goal complete`}
         >
@@ -77,8 +75,9 @@ export function DailyGoalCard({ goal }: DailyGoalCardProps) {
               </linearGradient>
             </defs>
           </svg>
-          <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold tabular-nums">
-            {pct}%
+          <span className="absolute inset-0 flex flex-col items-center justify-center text-center">
+            <span className="text-sm font-semibold tabular-nums">{pct}%</span>
+            <span className="text-[10px] text-muted-foreground">Completed</span>
           </span>
         </div>
       </div>

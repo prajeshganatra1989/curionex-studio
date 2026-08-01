@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
 
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { SidebarNavigation } from "@/components/layout/sidebar-navigation";
@@ -27,33 +27,46 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
         className,
       )}
     >
-      <div className="flex items-center gap-3 px-4 py-5">
-        <BrandLogo className="h-11" priority />
+      <div className="border-b border-border px-4 py-5">
+        <BrandLogo priority />
       </div>
 
-      <div className="flex-1 overflow-y-auto pb-4">
+      <div className="flex-1 overflow-y-auto py-4">
         <SidebarNavigation onNavigate={onNavigate} />
       </div>
 
       <div className="space-y-3 border-t border-border p-4">
-        <div className="flex items-center gap-3 rounded-lg border border-border bg-surface-elevated p-2.5">
-          <AvatarInitials name={displayName} />
-          <div className="min-w-0">
+        <div className="flex items-center gap-3 rounded-xl border border-border bg-surface-elevated p-2.5">
+          <AvatarInitials name={displayName} className="h-10 w-10" />
+          <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-foreground">
               {displayName}
             </p>
-            <p className="truncate text-xs text-muted-foreground">
-              {user?.email ?? "Signed in"}
+            <p className="truncate text-xs font-medium text-brand-orange">
+              Owner
             </p>
           </div>
+          <ChevronDown
+            className="h-4 w-4 shrink-0 text-muted-foreground"
+            aria-hidden
+          />
         </div>
         <Link
           href="/scripts"
           onClick={onNavigate}
-          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-brand-gradient px-4 text-sm font-semibold text-black shadow-[var(--glow-brand)] transition hover:brightness-110"
+          className="flex items-center gap-3 rounded-xl border border-border bg-surface-elevated p-2.5 transition hover:border-brand-orange/40 hover:bg-surface-hover"
         >
-          <Plus className="h-4 w-4" aria-hidden />
-          New Script
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-brand-gradient text-black shadow-[var(--glow-brand)]">
+            <Plus className="h-5 w-5" aria-hidden />
+          </span>
+          <span className="min-w-0 text-left">
+            <span className="block text-sm font-semibold text-foreground">
+              New Script
+            </span>
+            <span className="block text-xs text-muted-foreground">
+              Create a new script
+            </span>
+          </span>
         </Link>
       </div>
     </aside>

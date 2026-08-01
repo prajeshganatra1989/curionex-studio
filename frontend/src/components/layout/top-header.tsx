@@ -88,10 +88,12 @@ export function NotificationButton() {
     <button
       type="button"
       className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface text-muted-foreground hover:bg-surface-hover hover:text-foreground"
-      aria-label="Notifications (2 unread, demo)"
+      aria-label="Notifications (3 unread, demo)"
     >
-      <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-brand-orange" />
-      <span className="sr-only">2 unread notifications</span>
+      <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-orange px-1 text-[10px] font-semibold text-black">
+        3
+      </span>
+      <span className="sr-only">3 unread notifications</span>
       <svg
         viewBox="0 0 24 24"
         className="h-4 w-4"
@@ -141,7 +143,7 @@ export function GlobalSearch() {
         <circle cx="11" cy="11" r="8" />
         <path d="m21 21-4.3-4.3" />
       </svg>
-      <span className="flex-1 truncate">Search projects and scripts…</span>
+      <span className="flex-1 truncate">Search anything...</span>
       <kbd className="hidden rounded border border-border bg-surface-elevated px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground sm:inline">
         ⌘K
       </kbd>
