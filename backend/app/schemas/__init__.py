@@ -8,6 +8,15 @@ from app.schemas.auth import (
     UserResponse,
     normalize_email,
 )
+from app.schemas.knowledge_pack import (
+    KnowledgePackCreate,
+    KnowledgePackListResponse,
+    KnowledgePackReorderRequest,
+    KnowledgePackResponse,
+    KnowledgePackSectionResponse,
+    KnowledgePackSectionUpdate,
+    KnowledgePackUpdate,
+)
 from app.schemas.project import (
     CategoryCreate,
     CategoryResponse,
@@ -34,6 +43,13 @@ __all__ = [
     "CategoryCreate",
     "CategoryResponse",
     "CategoryUpdate",
+    "KnowledgePackCreate",
+    "KnowledgePackListResponse",
+    "KnowledgePackReorderRequest",
+    "KnowledgePackResponse",
+    "KnowledgePackSectionResponse",
+    "KnowledgePackSectionUpdate",
+    "KnowledgePackUpdate",
     "LoginRequest",
     "MessageResponse",
     "PermissionResponse",

@@ -2,7 +2,16 @@
 
 from fastapi import APIRouter
 
-from app.api.routes import audit, auth, categories, health, projects, rbac, tags
+from app.api.routes import (
+    audit,
+    auth,
+    categories,
+    health,
+    knowledge_packs,
+    projects,
+    rbac,
+    tags,
+)
 
 api_router = APIRouter()
 api_router.include_router(health.router)
@@ -12,3 +21,5 @@ api_router.include_router(audit.router)
 api_router.include_router(projects.router)
 api_router.include_router(categories.router)
 api_router.include_router(tags.router)
+api_router.include_router(knowledge_packs.project_packs_router)
+api_router.include_router(knowledge_packs.packs_router)
