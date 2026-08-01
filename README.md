@@ -13,7 +13,6 @@ Create, manage, review, automate, and publish premium educational content from a
 - PostgreSQL
 - SQLAlchemy
 - Tailwind CSS
-- Docker
 - n8n
 - OpenAI
 - ElevenLabs
