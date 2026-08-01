@@ -77,6 +77,26 @@ Database connectivity probe:
 }
 ```
 
+## Authentication
+
+Configure `JWT_SECRET_KEY` in `.env` (see `.env.example`).
+
+Create the first local user (password prompted securely):
+
+```bash
+python -m app.cli.create_user \
+  --email you@example.com \
+  --first-name Your \
+  --last-name Name
+```
+
+```http
+POST /auth/login
+GET  /auth/me
+```
+
+Docs: [`docs/authentication/`](../docs/authentication/)
+
 ## Run tests / lint
 
 ```bash
