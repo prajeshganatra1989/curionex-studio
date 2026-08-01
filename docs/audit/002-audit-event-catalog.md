@@ -13,6 +13,15 @@ Stable action codes currently emitted by Curionex Studio. This catalog will grow
 | `role.assigned` | `user` | Role assigned to user |
 | `role.removed` | `user` | Role removed from user |
 | `permission.assigned` | `permission` | Permission granted to a role |
+| `project.created` | `project` | Project created |
+| `project.updated` | `project` | Project fields updated |
+| `project.archived` | `project` | Project archived (DELETE lifecycle) |
+| `project.member_added` | `project` | User added to project members |
+| `project.member_removed` | `project` | User removed from project members |
+| `category.created` | `category` | Category created |
+| `category.updated` | `category` | Category updated |
+| `tag.created` | `tag` | Tag created |
+| `tag.updated` | `tag` | Tag updated |
 
 Reserved for future use (defined in constants / docs, not all emitted yet):
 

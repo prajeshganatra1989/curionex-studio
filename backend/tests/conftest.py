@@ -33,6 +33,11 @@ def engine(test_settings):
         connection.execute(text("SELECT 1"))
     # Ensure schema exists without dropping developer data at teardown.
     Base.metadata.create_all(bind=engine)
+    # Project codes use a PostgreSQL sequence outside ORM metadata.
+    with engine.begin() as connection:
+        connection.execute(
+            text("CREATE SEQUENCE IF NOT EXISTS project_code_seq START 1")
+        )
     yield engine
     engine.dispose()
 

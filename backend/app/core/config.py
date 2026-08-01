@@ -28,11 +28,30 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
+    # Project codes — prefix is configurable; sequence provides the number.
+    PROJECT_CODE_PREFIX: str = "CRX"
+    PROJECT_CODE_PAD_WIDTH: int = 4
+
     @field_validator("JWT_ALGORITHM")
     @classmethod
     def validate_jwt_algorithm(cls, value: str) -> str:
         if not value:
             raise ValueError("JWT_ALGORITHM must not be empty")
+        return value
+
+    @field_validator("PROJECT_CODE_PREFIX")
+    @classmethod
+    def validate_project_code_prefix(cls, value: str) -> str:
+        cleaned = value.strip().upper()
+        if not cleaned:
+            raise ValueError("PROJECT_CODE_PREFIX must not be empty")
+        return cleaned
+
+    @field_validator("PROJECT_CODE_PAD_WIDTH")
+    @classmethod
+    def validate_project_code_pad_width(cls, value: int) -> int:
+        if value < 1 or value > 10:
+            raise ValueError("PROJECT_CODE_PAD_WIDTH must be between 1 and 10")
         return value
 
     def require_jwt_secret(self) -> str:
