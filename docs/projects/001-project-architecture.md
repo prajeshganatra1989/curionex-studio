@@ -70,6 +70,12 @@ These codes already exist in the RBAC seed catalog.
    members.
 4. Adding/removing members never assigns or removes global roles.
 
+### Knowledge Pack access (M2F+)
+
+For Knowledge Packs, membership is **enforced** in addition to `knowledge_packs.*`
+permissions: a caller with global permission but no membership on the pack's project
+receives `403`. See `docs/knowledge-packs/001-knowledge-pack-architecture.md`.
+
 ## Categories and tags
 
 - Categories: unique slug, optional description, `is_active`.

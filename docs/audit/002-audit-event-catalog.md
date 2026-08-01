@@ -22,6 +22,11 @@ Stable action codes currently emitted by Curionex Studio. This catalog will grow
 | `category.updated` | `category` | Category updated |
 | `tag.created` | `tag` | Tag created |
 | `tag.updated` | `tag` | Tag updated |
+| `knowledge_pack.created` | `knowledge_pack` | Knowledge Pack created (with section shells) |
+| `knowledge_pack.updated` | `knowledge_pack` | Knowledge Pack fields updated |
+| `knowledge_pack.archived` | `knowledge_pack` | Knowledge Pack archived |
+| `knowledge_pack.section_updated` | `knowledge_pack` | Section title/content updated |
+| `knowledge_pack.sections_reordered` | `knowledge_pack` | Section positions updated |
 
 Reserved for future use (defined in constants / docs, not all emitted yet):
 
