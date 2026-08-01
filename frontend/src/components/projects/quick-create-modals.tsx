@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -34,6 +35,7 @@ export function CreateKnowledgePackModal({
   onClose: () => void;
   projectId: string;
 }) {
+  const router = useRouter();
   const createPack = useCreateKnowledgePack(projectId);
   const { toast } = useToast();
   const {
@@ -48,7 +50,7 @@ export function CreateKnowledgePackModal({
 
   async function onSubmit(values: PackValues) {
     try {
-      await createPack.mutateAsync({
+      const created = await createPack.mutateAsync({
         name: values.name,
         description: values.description || null,
         status: values.status,
@@ -56,6 +58,9 @@ export function CreateKnowledgePackModal({
       toast({ title: "Knowledge Pack created", tone: "success" });
       reset();
       onClose();
+      router.push(
+        `/projects/${projectId}/knowledge-packs/${created.id}`,
+      );
     } catch (err) {
       toast({
         title: "Could not create Knowledge Pack",
@@ -70,7 +75,7 @@ export function CreateKnowledgePackModal({
       open={open}
       onClose={onClose}
       title="Create Knowledge Pack"
-      description="Section shells are created automatically. Editing comes in a later sprint."
+      description="Section shells are created automatically. You will open the research editor next."
     >
       <form className="space-y-4" onSubmit={handleSubmit(onSubmit)} noValidate>
         <Field label="Name" htmlFor="pack-name" error={errors.name?.message}>
