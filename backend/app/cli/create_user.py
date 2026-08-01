@@ -9,7 +9,16 @@ import sys
 from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.schemas.auth import UserCreate
-from app.services.user_service import DuplicateEmailError, create_user
+from app.services.rbac_service import (
+    DuplicateAssignmentError,
+    assign_owner_role,
+    seed_rbac_catalog,
+)
+from app.services.user_service import (
+    DuplicateEmailError,
+    create_user,
+    get_user_by_email,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -22,13 +31,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--email", required=True, help="User email address")
     parser.add_argument("--first-name", required=True, help="First name")
     parser.add_argument("--last-name", required=True, help="Last name")
+    parser.add_argument(
+        "--assign-owner",
+        action="store_true",
+        help="Assign the Owner role after creating (or locating) the user.",
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-
-    # Ensure settings load (and surface JWT/DB misconfig early if needed).
     get_settings()
 
     password = getpass.getpass("Password: ")
@@ -49,17 +61,29 @@ def main(argv: list[str] | None = None) -> int:
 
     db = SessionLocal()
     try:
-        user = create_user(db, payload)
-    except DuplicateEmailError:
-        print("A user with this email already exists.", file=sys.stderr)
-        return 1
+        try:
+            user = create_user(db, payload)
+            print(f"Created user {user.email} ({user.id})")
+        except DuplicateEmailError:
+            user = get_user_by_email(db, args.email)
+            if user is None:
+                print("User lookup failed after duplicate email.", file=sys.stderr)
+                return 1
+            print(f"User already exists: {user.email} ({user.id})")
+
+        if args.assign_owner:
+            seed_rbac_catalog(db)
+            try:
+                assign_owner_role(db, user)
+                print("Assigned Owner role.")
+            except DuplicateAssignmentError:
+                print("Owner role already assigned.")
     except Exception as exc:  # noqa: BLE001 - CLI boundary
         print(f"Failed to create user: {exc.__class__.__name__}", file=sys.stderr)
         return 1
     finally:
         db.close()
 
-    print(f"Created user {user.email} ({user.id})")
     return 0
 
 
