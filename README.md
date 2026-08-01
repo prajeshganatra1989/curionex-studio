@@ -1,31 +1,35 @@
 # Curionex Studio
 
-Curionex Studio is an AI-powered content production platform designed to manage the complete lifecycle of educational content creation.
+Curionex Studio manages the complete content production lifecycle for premium educational scripts.
 
-## Vision
+## Stack
 
-Create, manage, review, automate, and publish premium educational content from a single platform.
+- **Backend:** FastAPI, SQLAlchemy, PostgreSQL, Alembic
+- **Frontend:** Next.js (App Router), React, TypeScript, Tailwind CSS
 
-## Tech Stack
+## Local development
 
-- FastAPI
-- React
-- PostgreSQL
-- SQLAlchemy
-- Tailwind CSS
-- n8n
-- OpenAI
-- ElevenLabs
+### Backend
 
-## Roadmap
+```bash
+cd backend
+source .venv/bin/activate
+uvicorn app.main:app --reload
+```
 
-- [ ] Authentication
-- [ ] Dashboard
-- [ ] Projects
-- [ ] Knowledge Packs
-- [ ] Version History
-- [ ] Comments
-- [ ] RBAC
-- [ ] Audit Logs
-- [ ] AI Integrations
-- [ ] Automation
+API: http://127.0.0.1:8000
+
+### Frontend
+
+```bash
+cd frontend
+cp .env.example .env.local
+npm install
+npm run dev
+```
+
+App: http://localhost:3000
+
+## Current milestone
+
+`v0.10.0` backend workflow + Frontend Sprint 1 foundation (login, shell, dashboard).
