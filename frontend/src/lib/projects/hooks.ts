@@ -32,6 +32,7 @@ import type {
   ProjectListParams,
   ProjectUpdateInput,
   ScriptCreateInput,
+  ScriptListParams,
   TagCreateInput,
 } from "@/lib/api/types";
 
@@ -165,11 +166,27 @@ export function useProjectKnowledgePacks(
   });
 }
 
-export function useProjectScripts(projectId: string) {
+export function useProjectScripts(
+  projectId: string,
+  params: ScriptListParams = {},
+) {
+  const page = params.page ?? 1;
+  const pageSize = params.page_size ?? 5;
+  const statusFilter = params.status;
+  const search = params.search;
   const { api, status } = useAuth();
   return useQuery({
-    queryKey: projectKeys.scripts(projectId),
-    queryFn: () => listProjectScripts(api, projectId, { page: 1, page_size: 5 }),
+    queryKey: [
+      ...projectKeys.scripts(projectId),
+      { page, page_size: pageSize, status: statusFilter, search },
+    ],
+    queryFn: () =>
+      listProjectScripts(api, projectId, {
+        page,
+        page_size: pageSize,
+        status: statusFilter,
+        search,
+      }),
     enabled: status === "authenticated" && Boolean(projectId),
   });
 }
@@ -221,3 +238,5 @@ export function useScriptWorkflowStatus(scriptId: string | null) {
     enabled: status === "authenticated" && Boolean(scriptId),
   });
 }
+
+// Prefer `@/lib/scripts/hooks` for Script Workspace queries.

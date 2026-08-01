@@ -668,5 +668,8 @@ describe("ProjectHomePage", () => {
         }),
       ),
     );
+    await waitFor(() =>
+      expect(pushMock).toHaveBeenCalledWith("/projects/proj-1/scripts/sc-2"),
+    );
   });
 });

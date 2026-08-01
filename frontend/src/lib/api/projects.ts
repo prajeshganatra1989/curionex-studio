@@ -2,7 +2,9 @@ import { ApiError, type ApiClient } from "@/lib/api/client";
 import type {
   Category,
   CategoryCreateInput,
+  ContentVersionListResponse,
   ContentVersionSummary,
+  ContentWorkflow,
   KnowledgePackCreateInput,
   KnowledgePackDetail,
   KnowledgePackListResponse,
@@ -14,11 +16,18 @@ import type {
   ProjectListResponse,
   ProjectUpdateInput,
   ScriptCreateInput,
+  ScriptDetail,
+  ScriptDocument,
+  ScriptDocumentUpdateInput,
+  ScriptListParams,
   ScriptListResponse,
   ScriptSummary,
+  ScriptUpdateInput,
   Tag,
   TagCreateInput,
+  WorkflowReviewResponse,
   WorkflowStatus,
+  WorkflowVersionCreateResponse,
 } from "@/lib/api/types";
 
 function toQuery(params: Record<string, string | number | undefined | null>) {
@@ -123,7 +132,7 @@ export function updateKnowledgePackSection(
 export function listProjectScripts(
   client: ApiClient,
   projectId: string,
-  params: { page?: number; page_size?: number; status?: string; search?: string } = {},
+  params: ScriptListParams = {},
 ) {
   return client.get<ScriptListResponse>(
     `/projects/${projectId}/scripts${toQuery(params)}`,
@@ -135,7 +144,39 @@ export function createScript(
   projectId: string,
   payload: ScriptCreateInput,
 ) {
-  return client.post<ScriptSummary>(`/projects/${projectId}/scripts`, payload);
+  return client.post<ScriptDetail>(`/projects/${projectId}/scripts`, payload);
+}
+
+export function getScript(client: ApiClient, scriptId: string) {
+  return client.get<ScriptDetail>(`/scripts/${scriptId}`);
+}
+
+export function updateScript(
+  client: ApiClient,
+  scriptId: string,
+  payload: ScriptUpdateInput,
+) {
+  return client.patch<ScriptDetail>(`/scripts/${scriptId}`, payload);
+}
+
+export function archiveScript(client: ApiClient, scriptId: string) {
+  return client.delete<ScriptSummary>(`/scripts/${scriptId}`);
+}
+
+export function listScriptDocuments(client: ApiClient, scriptId: string) {
+  return client.get<ScriptDocument[]>(`/scripts/${scriptId}/documents`);
+}
+
+export function updateScriptDocument(
+  client: ApiClient,
+  scriptId: string,
+  documentType: string,
+  payload: ScriptDocumentUpdateInput,
+) {
+  return client.patch<ScriptDocument>(
+    `/scripts/${scriptId}/documents/${documentType}`,
+    payload,
+  );
 }
 
 export async function getLatestContentVersion(
@@ -170,6 +211,36 @@ export async function getApprovedContentVersion(
   }
 }
 
+export function listProjectContentVersions(
+  client: ApiClient,
+  projectId: string,
+  params: { page?: number; page_size?: number; status?: string } = {},
+) {
+  return client.get<ContentVersionListResponse>(
+    `/projects/${projectId}/content-versions${toQuery(params)}`,
+  );
+}
+
+export function getContentVersion(client: ApiClient, versionId: string) {
+  return client.get<ContentVersionSummary>(`/content-versions/${versionId}`);
+}
+
 export function getWorkflowStatus(client: ApiClient, scriptId: string) {
   return client.get<WorkflowStatus>(`/scripts/${scriptId}/workflow/status`);
+}
+
+export function getScriptWorkflow(client: ApiClient, scriptId: string) {
+  return client.get<ContentWorkflow>(`/scripts/${scriptId}/workflow`);
+}
+
+export function createWorkflowVersion(client: ApiClient, scriptId: string) {
+  return client.post<WorkflowVersionCreateResponse>(
+    `/scripts/${scriptId}/workflow/create-version`,
+  );
+}
+
+export function submitWorkflowReview(client: ApiClient, scriptId: string) {
+  return client.post<WorkflowReviewResponse>(
+    `/scripts/${scriptId}/workflow/submit-review`,
+  );
 }

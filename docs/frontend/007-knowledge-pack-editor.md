@@ -72,4 +72,5 @@ Data flow:
 
 ## Generate Script
 
-Navigates to `/projects/{projectId}/scripts` (placeholder). Does not generate content.
+Navigates to `/projects/{projectId}/scripts` (Script list / entry to workspace).
+Does not generate content. See `008-script-workspace.md`.

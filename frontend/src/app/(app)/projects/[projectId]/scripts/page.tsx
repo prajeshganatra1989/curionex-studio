@@ -1,12 +1,7 @@
-import { ProjectSectionPlaceholder } from "@/components/projects/project-home-page";
+import { ProjectScriptsPage } from "@/components/scripts/project-scripts-page";
 
 export const metadata = { title: "Scripts" };
 
-export default function ProjectScriptsPage() {
-  return (
-    <ProjectSectionPlaceholder
-      title="Scripts"
-      description="The full Script Workspace arrives in a later sprint. Use Create Script from project overview for now."
-    />
-  );
+export default function ProjectScriptsRoute() {
+  return <ProjectScriptsPage />;
 }
