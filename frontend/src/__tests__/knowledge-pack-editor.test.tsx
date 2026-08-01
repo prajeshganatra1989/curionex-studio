@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { KnowledgePackEditorPage } from "@/components/knowledge-packs/knowledge-pack-editor-page";
+import { KnowledgePackEditor } from "@/components/knowledge-packs/knowledge-pack-editor";
 import { ToastProvider } from "@/components/ui/toast";
 import { ApiError } from "@/lib/api/client";
 import type { KnowledgePackDetail, Project } from "@/lib/api/types";
@@ -12,13 +12,14 @@ import { SECTION_ORDER } from "@/lib/knowledge-packs/sections";
 const getKnowledgePack = vi.fn();
 const getProject = vi.fn();
 const updateKnowledgePackSection = vi.fn();
+const pushMock = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({
     projectId: "proj-1",
     knowledgePackId: "pack-1",
   }),
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push: pushMock, replace: vi.fn() }),
 }));
 
 vi.mock("next/link", () => ({
@@ -116,14 +117,14 @@ function wrap(ui: React.ReactElement) {
   );
 }
 
-describe("KnowledgePackEditorPage", () => {
+describe("KnowledgePackEditor", () => {
   beforeEach(() => {
     getKnowledgePack.mockReset();
     getProject.mockReset();
     updateKnowledgePackSection.mockReset();
+    pushMock.mockReset();
     getProject.mockResolvedValue(project);
     getKnowledgePack.mockResolvedValue(makePack());
-    // jsdom IntersectionObserver stub
     class IO {
       observe() {}
       unobserve() {}
@@ -132,13 +133,13 @@ describe("KnowledgePackEditorPage", () => {
     vi.stubGlobal("IntersectionObserver", IO);
   });
 
-  it("renders editor with header and all sections", async () => {
-    wrap(<KnowledgePackEditorPage />);
+  it("renders workspace header and all sections", async () => {
+    wrap(<KnowledgePackEditor />);
     expect(await screen.findByRole("heading", { name: "Core Research" })).toBeInTheDocument();
     expect(screen.getByText("CRX-0001")).toBeInTheDocument();
-    expect(
-      screen.getByText((text) => text.includes("Black Holes")),
-    ).toBeInTheDocument();
+    expect(screen.getByText((t) => t.includes("Black Holes"))).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Back to Project/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Generate Script/i })).toBeInTheDocument();
     for (const meta of SECTION_ORDER) {
       expect(
         screen.getByRole("heading", { name: meta.title, level: 2 }),
@@ -149,19 +150,19 @@ describe("KnowledgePackEditorPage", () => {
 
   it("shows loading state", () => {
     getKnowledgePack.mockReturnValue(new Promise(() => undefined));
-    wrap(<KnowledgePackEditorPage />);
+    wrap(<KnowledgePackEditor />);
     expect(screen.getByTestId("kp-editor-loading")).toBeInTheDocument();
   });
 
   it("shows not-found state", async () => {
     getKnowledgePack.mockRejectedValue(new ApiError(404, "Not found"));
-    wrap(<KnowledgePackEditorPage />);
+    wrap(<KnowledgePackEditor />);
     expect(await screen.findByText("Knowledge Pack not found")).toBeInTheDocument();
   });
 
   it("tracks dirty state and saves only modified sections", async () => {
     const user = userEvent.setup();
-    wrap(<KnowledgePackEditorPage />);
+    wrap(<KnowledgePackEditor />);
     await screen.findByDisplayValue("Initial research notes");
 
     expect(screen.getByTestId("save-status")).toHaveTextContent(/Saved/i);
@@ -201,7 +202,7 @@ describe("KnowledgePackEditorPage", () => {
 
   it("preserves drafts and shows retry on save failure", async () => {
     const user = userEvent.setup();
-    wrap(<KnowledgePackEditorPage />);
+    wrap(<KnowledgePackEditor />);
     await screen.findByDisplayValue("Initial research notes");
     const facts = screen.getByLabelText("Facts content");
     await user.type(facts, "Keep me");
@@ -212,11 +213,11 @@ describe("KnowledgePackEditorPage", () => {
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
 
-  it("navigates to a section via left nav", async () => {
+  it("navigates via section navigator", async () => {
     const user = userEvent.setup();
     const scrollIntoView = vi.fn();
     Element.prototype.scrollIntoView = scrollIntoView;
-    wrap(<KnowledgePackEditorPage />);
+    wrap(<KnowledgePackEditor />);
     await screen.findByRole("heading", { name: "Core Research" });
     const nav = screen.getByRole("navigation", {
       name: "Knowledge Pack sections",
@@ -225,24 +226,43 @@ describe("KnowledgePackEditorPage", () => {
     expect(scrollIntoView).toHaveBeenCalled();
   });
 
-  it("shows local completion and word counts", async () => {
-    const { container } = wrap(<KnowledgePackEditorPage />);
+  it("opens mobile section drawer", async () => {
+    const user = userEvent.setup();
+    wrap(<KnowledgePackEditor />);
+    await screen.findByRole("heading", { name: "Core Research" });
+    await user.click(screen.getByRole("button", { name: "Open section navigator" }));
+    expect(await screen.findByRole("dialog", { name: "Sections" })).toBeInTheDocument();
+  });
+
+  it("navigates Generate Script to project scripts placeholder", async () => {
+    const user = userEvent.setup();
+    wrap(<KnowledgePackEditor />);
+    await screen.findByRole("heading", { name: "Core Research" });
+    await user.click(screen.getByRole("button", { name: /Generate Script/i }));
+    expect(pushMock).toHaveBeenCalledWith("/projects/proj-1/scripts");
+  });
+
+  it("shows word/character counters and local completion", async () => {
+    const { container } = wrap(<KnowledgePackEditor />);
     await screen.findByDisplayValue("Initial research notes");
-    // Progress panel is xl-only (display:none below xl in CSS).
+    expect(screen.getAllByTestId("word-counter").length).toBeGreaterThan(0);
+    expect(screen.getAllByTestId("character-counter").length).toBeGreaterThan(0);
     const progress = container.querySelector(
       '[aria-label="Writing progress"]',
     ) as HTMLElement;
     expect(progress).toBeTruthy();
     expect(within(progress).getByText("14%")).toBeInTheDocument();
     expect(within(progress).getByText("1 of 7 sections started")).toBeInTheDocument();
-    expect(within(progress).getByText("3")).toBeInTheDocument();
-    expect(screen.getAllByText(/character/i).length).toBeGreaterThan(0);
   });
 
-  it("uses desktop three-column structure classes", async () => {
-    const { container } = wrap(<KnowledgePackEditorPage />);
+  it("uses responsive three-column layout classes", async () => {
+    const { container } = wrap(<KnowledgePackEditor />);
     await screen.findByRole("heading", { name: "Core Research" });
-    expect(container.querySelector(".xl\\:grid-cols-\\[14rem_minmax\\(0\\,1fr\\)_16rem\\]")).toBeTruthy();
+    expect(
+      container.querySelector(
+        ".xl\\:grid-cols-\\[13rem_minmax\\(0\\,42rem\\)_15rem\\]",
+      ),
+    ).toBeTruthy();
     expect(container.querySelector(".hidden.xl\\:block")).toBeTruthy();
     expect(container.querySelector(".hidden.lg\\:block")).toBeTruthy();
   });

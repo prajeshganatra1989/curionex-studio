@@ -41,7 +41,7 @@ describe("knowledge pack metrics", () => {
 });
 
 describe("section catalog", () => {
-  it("keeps the required display order", () => {
+  it("keeps the required display order and helper copy", () => {
     expect(SECTION_ORDER.map((s) => s.title)).toEqual([
       "Research",
       "Facts",
@@ -51,5 +51,7 @@ describe("section catalog", () => {
       "Key Insights",
       "Additional Context",
     ]);
+    expect(SECTION_ORDER[0]?.description).toBe("Collect everything useful.");
+    expect(SECTION_ORDER[1]?.description).toBe("Verified information only.");
   });
 });
