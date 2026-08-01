@@ -466,6 +466,8 @@ def test_pending_uniqueness_and_version_unique_constraint(
 
 def test_concurrent_version_allocation(engine) -> None:
     """Two connections allocate distinct version numbers under advisory locks."""
+    from uuid import uuid4
+
     from sqlalchemy import text
 
     from app.models.user import User
@@ -474,8 +476,9 @@ def test_concurrent_version_allocation(engine) -> None:
     setup = SessionLocal()
     project_id = None
     creator_id = None
+    email = f"owner-cv-concurrent-{uuid4().hex[:8]}@example.com"
     try:
-        owner = _owner(setup, "owner-cv-concurrent@example.com")
+        owner = _owner(setup, email)
         project = create_project(
             setup,
             ProjectCreate(name="Concurrent Project"),
@@ -530,6 +533,18 @@ def test_concurrent_version_allocation(engine) -> None:
         connection.execute(
             text("DELETE FROM projects WHERE id = :pid"),
             {"pid": project_id},
+        )
+        connection.execute(
+            text("DELETE FROM audit_logs WHERE actor_user_id = :uid"),
+            {"uid": creator_id},
+        )
+        connection.execute(
+            text("DELETE FROM user_roles WHERE user_id = :uid"),
+            {"uid": creator_id},
+        )
+        connection.execute(
+            text("DELETE FROM users WHERE id = :uid"),
+            {"uid": creator_id},
         )
 
 

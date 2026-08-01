@@ -32,6 +32,10 @@ Stable action codes currently emitted by Curionex Studio. This catalog will grow
 | `approval.approved` | `approval` | Approval approved |
 | `approval.rejected` | `approval` | Approval rejected |
 | `approval.cancelled` | `approval` | Pending approval cancelled |
+| `script.created` | `script` | Script workspace created (with document shells) |
+| `script.updated` | `script` | Script metadata updated |
+| `script.archived` | `script` | Script archived |
+| `script.document_updated` | `script` | Workspace document title/content updated |
 
 Reserved for future use (defined in constants / docs, not all emitted yet):
 
@@ -40,3 +44,4 @@ Reserved for future use (defined in constants / docs, not all emitted yet):
 Constants live in `app/audit/actions.py`.
 
 Note: audit metadata for content versions must **not** include full content snapshots.
+Note: audit metadata for script documents must **not** include full document content.

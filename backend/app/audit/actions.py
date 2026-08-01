@@ -51,3 +51,10 @@ ACTION_APPROVAL_REQUESTED = "approval.requested"
 ACTION_APPROVAL_APPROVED = "approval.approved"
 ACTION_APPROVAL_REJECTED = "approval.rejected"
 ACTION_APPROVAL_CANCELLED = "approval.cancelled"
+
+ENTITY_SCRIPT = "script"
+
+ACTION_SCRIPT_CREATED = "script.created"
+ACTION_SCRIPT_UPDATED = "script.updated"
+ACTION_SCRIPT_ARCHIVED = "script.archived"
+ACTION_SCRIPT_DOCUMENT_UPDATED = "script.document_updated"

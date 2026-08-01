@@ -1,0 +1,1 @@
+"""Script workspace domain package."""

@@ -1,0 +1,41 @@
+"""Controlled Script status values."""
+
+SCRIPT_STATUS_DRAFT = "draft"
+SCRIPT_STATUS_IN_PROGRESS = "in_progress"
+SCRIPT_STATUS_IN_REVIEW = "in_review"
+SCRIPT_STATUS_APPROVED = "approved"
+SCRIPT_STATUS_ARCHIVED = "archived"
+
+SCRIPT_STATUSES: frozenset[str] = frozenset(
+    {
+        SCRIPT_STATUS_DRAFT,
+        SCRIPT_STATUS_IN_PROGRESS,
+        SCRIPT_STATUS_IN_REVIEW,
+        SCRIPT_STATUS_APPROVED,
+        SCRIPT_STATUS_ARCHIVED,
+    }
+)
+
+DEFAULT_SCRIPT_STATUS = SCRIPT_STATUS_DRAFT
+
+# Allowed metadata status transitions (archive is via DELETE endpoint).
+SCRIPT_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    SCRIPT_STATUS_DRAFT: frozenset(
+        {SCRIPT_STATUS_IN_PROGRESS, SCRIPT_STATUS_IN_REVIEW, SCRIPT_STATUS_ARCHIVED}
+    ),
+    SCRIPT_STATUS_IN_PROGRESS: frozenset(
+        {SCRIPT_STATUS_DRAFT, SCRIPT_STATUS_IN_REVIEW, SCRIPT_STATUS_ARCHIVED}
+    ),
+    SCRIPT_STATUS_IN_REVIEW: frozenset(
+        {
+            SCRIPT_STATUS_IN_PROGRESS,
+            SCRIPT_STATUS_APPROVED,
+            SCRIPT_STATUS_DRAFT,
+            SCRIPT_STATUS_ARCHIVED,
+        }
+    ),
+    SCRIPT_STATUS_APPROVED: frozenset({SCRIPT_STATUS_ARCHIVED}),
+    SCRIPT_STATUS_ARCHIVED: frozenset(),
+}
+
+SCRIPT_CODE_PAD_WIDTH = 2
