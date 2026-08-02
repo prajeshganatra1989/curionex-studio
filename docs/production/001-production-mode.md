@@ -44,4 +44,5 @@ Queue, overview, and metrics only include projects where the caller is a `Projec
 - [005-production-metrics.md](005-production-metrics.md)
 - Editorial Library: [../editorial/001-editorial-library.md](../editorial/001-editorial-library.md)
 - Production Catalog: [../editorial/006-production-catalog.md](../editorial/006-production-catalog.md)
+- Production Session: [./006-production-session.md](./006-production-session.md)
 - Frontend: [../frontend/015-production-mode-ui.md](../frontend/015-production-mode-ui.md)

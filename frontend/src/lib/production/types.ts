@@ -229,6 +229,81 @@ export type ProductionSettingsUpdate = {
 
 export type ProductionViewMode = "queue" | "board";
 
+export type ProductionSessionTimelineStep = {
+  key: string;
+  label: string;
+  status: "complete" | "current" | "upcoming";
+};
+
+export type ProductionSessionSidebar = {
+  wave: number | null;
+  priority: string | null;
+  estimated_remaining_minutes: number;
+  quality_score: number | null;
+  quality_band: string | null;
+  approval_status: string | null;
+  knowledge_pack_status: string;
+  knowledge_pack_completion: number;
+  version_status: string | null;
+  reviewer: string | null;
+};
+
+export type ProductionSessionCurrent = {
+  topic_title: string;
+  topic_id: string | null;
+  topic_slug: string | null;
+  project_id: string;
+  project_code: string;
+  project_name: string;
+  script_id: string | null;
+  script_title: string | null;
+  production_stage: ProductionStage | string;
+  stage_label: string;
+  next_action: ProductionNextAction;
+  continue_url: string | null;
+  wave: number | null;
+  priority: string | null;
+  estimated_remaining_steps: number;
+  timeline: ProductionSessionTimelineStep[];
+  sidebar: ProductionSessionSidebar | null;
+};
+
+export type ProductionSessionQueueItem = Omit<
+  ProductionSessionCurrent,
+  "sidebar"
+>;
+
+export type ProductionSession = {
+  today: {
+    goal: number;
+    completed: number;
+    estimated_finish: string | null;
+    current_streak: number;
+  };
+  progress: {
+    approved_total: number;
+    approved_target: number;
+    remaining: number;
+    completion_percent: number;
+    approved_today: number;
+  };
+  current: ProductionSessionCurrent | null;
+  upcoming: ProductionSessionQueueItem[];
+  previous_completed: {
+    topic_title: string;
+    stage_label: string;
+    project_id: string;
+    script_id: string | null;
+  } | null;
+  warnings: string[];
+  empty: boolean;
+  browse_topics_url: string;
+  settings: {
+    daily_approved_script_target: number;
+    approved_script_target: number;
+  };
+};
+
 export function productionStageLabel(stage: string): string {
   if (stage in PRODUCTION_STAGE_LABELS) {
     return PRODUCTION_STAGE_LABELS[stage as ProductionStage];

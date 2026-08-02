@@ -270,11 +270,15 @@ describe("SidebarNavigation", () => {
       "aria-current",
       "page",
     );
+    expect(screen.getByRole("link", { name: "Session" })).toHaveAttribute(
+      "href",
+      "/production/session",
+    );
     expect(screen.getByRole("link", { name: "Production" })).toHaveAttribute(
       "href",
       "/production",
     );
     expect(screen.getByRole("link", { name: "Projects" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Scripts" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Topics" })).toBeInTheDocument();
   });
 });

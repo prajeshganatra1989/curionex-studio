@@ -208,6 +208,103 @@ class ProductionActivityResponse(BaseModel):
     restricted: bool = False
 
 
+class ProductionSessionToday(BaseModel):
+    goal: int
+    completed: int
+    estimated_finish: str | None = None
+    current_streak: int = 0
+
+
+class ProductionSessionProgress(BaseModel):
+    approved_total: int
+    approved_target: int
+    remaining: int
+    completion_percent: float
+    approved_today: int
+
+
+class ProductionSessionTimelineStep(BaseModel):
+    key: str
+    label: str
+    status: Literal["complete", "current", "upcoming"]
+
+
+class ProductionSessionSidebar(BaseModel):
+    wave: int | None = None
+    priority: str | None = None
+    estimated_remaining_minutes: int = 0
+    quality_score: int | None = None
+    quality_band: str | None = None
+    approval_status: str | None = None
+    knowledge_pack_status: str
+    knowledge_pack_completion: int = 0
+    version_status: str | None = None
+    reviewer: str | None = None
+
+
+class ProductionSessionCurrent(BaseModel):
+    topic_title: str
+    topic_id: str | None = None
+    topic_slug: str | None = None
+    project_id: str
+    project_code: str
+    project_name: str
+    script_id: str | None = None
+    script_title: str | None = None
+    production_stage: ProductionStageLiteral
+    stage_label: str
+    next_action: ProductionNextAction
+    continue_url: str | None = None
+    wave: int | None = None
+    priority: str | None = None
+    estimated_remaining_steps: int = 0
+    timeline: list[ProductionSessionTimelineStep]
+    sidebar: ProductionSessionSidebar | None = None
+
+
+class ProductionSessionQueueItem(BaseModel):
+    topic_title: str
+    topic_id: str | None = None
+    topic_slug: str | None = None
+    project_id: str
+    project_code: str
+    project_name: str
+    script_id: str | None = None
+    script_title: str | None = None
+    production_stage: ProductionStageLiteral
+    stage_label: str
+    next_action: ProductionNextAction
+    continue_url: str | None = None
+    wave: int | None = None
+    priority: str | None = None
+    estimated_remaining_steps: int = 0
+    timeline: list[ProductionSessionTimelineStep]
+
+
+class ProductionSessionPrevious(BaseModel):
+    topic_title: str
+    stage_label: str
+    project_id: str
+    script_id: str | None = None
+
+
+class ProductionSessionSettingsSnippet(BaseModel):
+    daily_approved_script_target: int
+    approved_script_target: int
+
+
+class ProductionSessionResponse(BaseModel):
+    today: ProductionSessionToday
+    progress: ProductionSessionProgress
+    current: ProductionSessionCurrent | None = None
+    upcoming: list[ProductionSessionQueueItem]
+    previous_completed: ProductionSessionPrevious | None = None
+    warnings: list[str]
+    empty: bool
+    browse_topics_url: str
+    settings: ProductionSessionSettingsSnippet
+
+
 PRODUCTION_STAGE_SET: frozenset[str] = frozenset(PRODUCTION_STAGES)
 QUALITY_BAND_SET: frozenset[str] = frozenset(
     {

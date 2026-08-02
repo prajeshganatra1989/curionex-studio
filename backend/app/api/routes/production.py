@@ -17,10 +17,11 @@ from app.schemas.production import (
     ProductionMetricsResponse,
     ProductionOverviewResponse,
     ProductionQueueResponse,
+    ProductionSessionResponse,
     ProductionSettingsResponse,
     ProductionSettingsUpdate,
 )
-from app.services import production_service
+from app.services import production_service, production_session_service
 
 router = APIRouter(prefix="/production", tags=["production"])
 
@@ -64,6 +65,15 @@ def patch_production_settings(
     except production_service.ValidationError as exc:
         raise _map_error(exc) from None
     return ProductionSettingsResponse.model_validate(row, from_attributes=True)
+
+
+@router.get("/session", response_model=ProductionSessionResponse)
+def get_production_session(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_permission("production.view"))],
+) -> ProductionSessionResponse:
+    data = production_session_service.build_production_session(db, current_user)
+    return ProductionSessionResponse.model_validate(data)
 
 
 @router.get("/overview", response_model=ProductionOverviewResponse)
