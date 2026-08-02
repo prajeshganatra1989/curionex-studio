@@ -14,11 +14,15 @@ from app.models.script import Script
 from app.models.user import User
 from app.schemas.ai import (
     AiGenerationListResponse,
+    AiGenerationResponse,
     AiJobResponse,
     ScriptAiDraftApply,
     ScriptAiDraftApplyResponse,
     ScriptAiDraftCreate,
     ScriptAiPrerequisitesResponse,
+    ScriptQualityReviewCreate,
+    ScriptQualitySuggestionApply,
+    ScriptQualitySuggestionApplyResponse,
 )
 from app.schemas.script import (
     ScriptCreate,
@@ -29,7 +33,7 @@ from app.schemas.script import (
     ScriptResponse,
     ScriptUpdate,
 )
-from app.services import script_ai_service, script_service
+from app.services import script_ai_service, script_quality_service, script_service
 
 project_scripts_router = APIRouter(
     prefix="/projects/{project_id}/scripts",
@@ -65,6 +69,7 @@ def _map_error(exc: Exception) -> HTTPException:
         (
             script_service.NotFoundError,
             script_ai_service.NotFoundError,
+            script_quality_service.NotFoundError,
         ),
     ):
         return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
@@ -73,6 +78,7 @@ def _map_error(exc: Exception) -> HTTPException:
         (
             script_service.ForbiddenError,
             script_ai_service.ForbiddenError,
+            script_quality_service.ForbiddenError,
         ),
     ):
         return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
@@ -85,11 +91,22 @@ def _map_error(exc: Exception) -> HTTPException:
                 "message": str(exc),
             },
         )
+    if isinstance(exc, script_quality_service.StaleReviewError):
+        return HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": exc.code, "message": str(exc)},
+        )
+    if isinstance(exc, script_quality_service.ConflictError):
+        return HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": exc.code, "message": str(exc)},
+        )
     if isinstance(
         exc,
         (
             script_service.ValidationError,
             script_ai_service.ValidationError,
+            script_quality_service.ValidationError,
         ),
     ):
         return HTTPException(
@@ -511,5 +528,154 @@ def post_apply_script_ai_generation(
         ).model_dump(mode="json"),
         generation_id=generation.id,
         conflict_strategy=payload.conflict_strategy,
+        stale_input=stale,
+    )
+
+
+@scripts_router.post(
+    "/{script_id}/ai-quality-reviews",
+    response_model=AiJobResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def post_script_quality_review(
+    script_id: UUID,
+    payload: ScriptQualityReviewCreate,
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_permission("ai.generate"))],
+) -> AiJobResponse:
+    ctx = extract_request_audit_context(request)
+    try:
+        job = script_quality_service.create_quality_review_job(
+            db,
+            script_id=script_id,
+            actor=current_user,
+            model_id=payload.model_id,
+            language=payload.language,
+            target_duration_seconds=payload.target_duration_seconds,
+            target_words_per_minute=payload.target_words_per_minute,
+            idempotency_key=payload.idempotency_key,
+            execute_now=True,
+            ip_address=ctx.ip_address,
+            user_agent=ctx.user_agent,
+            sleep_fn=lambda _s: None,
+        )
+    except (
+        script_quality_service.NotFoundError,
+        script_quality_service.ForbiddenError,
+        script_quality_service.ValidationError,
+        script_service.NotFoundError,
+        script_service.ForbiddenError,
+        script_service.ValidationError,
+    ) as exc:
+        raise _map_error(exc) from None
+    return ai_routes._job_response(job, db)
+
+
+@scripts_router.get(
+    "/{script_id}/ai-quality-reviews",
+    response_model=AiGenerationListResponse,
+)
+def get_script_quality_reviews(
+    script_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_permission("ai.view"))],
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> AiGenerationListResponse:
+    try:
+        items, total = script_quality_service.list_quality_reviews(
+            db,
+            script_id,
+            actor=current_user,
+            page=page,
+            page_size=page_size,
+        )
+    except (
+        script_quality_service.NotFoundError,
+        script_quality_service.ForbiddenError,
+        script_service.NotFoundError,
+        script_service.ForbiddenError,
+    ) as exc:
+        raise _map_error(exc) from None
+    return AiGenerationListResponse(
+        items=[ai_routes._generation_response(item, db) for item in items],
+        page=page,
+        page_size=page_size,
+        total=total,
+    )
+
+
+@scripts_router.get(
+    "/{script_id}/ai-quality-reviews/latest",
+    response_model=AiGenerationResponse,
+)
+def get_latest_script_quality_review(
+    script_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_permission("ai.view"))],
+) -> AiGenerationResponse:
+    try:
+        item = script_quality_service.get_latest_quality_review(
+            db, script_id, actor=current_user
+        )
+    except (
+        script_quality_service.NotFoundError,
+        script_quality_service.ForbiddenError,
+        script_service.NotFoundError,
+        script_service.ForbiddenError,
+    ) as exc:
+        raise _map_error(exc) from None
+    if item is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No quality review found for this script.",
+        )
+    return ai_routes._generation_response(item, db)
+
+
+@scripts_router.post(
+    "/{script_id}/ai-quality-reviews/{generation_id}/suggestions/{issue_id}/apply",
+    response_model=ScriptQualitySuggestionApplyResponse,
+)
+def post_apply_quality_suggestion(
+    script_id: UUID,
+    generation_id: UUID,
+    issue_id: str,
+    payload: ScriptQualitySuggestionApply,
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_permission("scripts.update"))],
+) -> ScriptQualitySuggestionApplyResponse:
+    ctx = extract_request_audit_context(request)
+    try:
+        document, generation, stale = script_quality_service.apply_suggestion(
+            db,
+            script_id=script_id,
+            generation_id=generation_id,
+            issue_id=issue_id,
+            strategy=payload.strategy,  # type: ignore[arg-type]
+            actor=current_user,
+            ip_address=ctx.ip_address,
+            user_agent=ctx.user_agent,
+        )
+    except (
+        script_quality_service.NotFoundError,
+        script_quality_service.ForbiddenError,
+        script_quality_service.ValidationError,
+        script_quality_service.ConflictError,
+        script_quality_service.StaleReviewError,
+        script_service.NotFoundError,
+        script_service.ForbiddenError,
+        script_service.ValidationError,
+    ) as exc:
+        raise _map_error(exc) from None
+    return ScriptQualitySuggestionApplyResponse(
+        document=ScriptDocumentResponse.model_validate(
+            document, from_attributes=True
+        ).model_dump(mode="json"),
+        generation_id=generation.id,
+        issue_id=issue_id,
+        strategy=payload.strategy,
         stale_input=stale,
     )

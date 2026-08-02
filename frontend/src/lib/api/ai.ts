@@ -1,4 +1,3 @@
-import type { ApiClient } from "@/lib/api/client";
 import type {
   AiGeneration,
   AiGenerationListParams,
@@ -26,7 +25,11 @@ import type {
   ScriptAiDraftApplyResponse,
   ScriptAiDraftCreateInput,
   ScriptAiPrerequisitesResponse,
+  ScriptQualityReviewCreateInput,
+  ScriptQualitySuggestionApplyInput,
+  ScriptQualitySuggestionApplyResponse,
 } from "@/lib/ai/types";
+import { ApiError, type ApiClient } from "@/lib/api/client";
 
 function toQuery(params: Record<string, string | number | undefined | null>) {
   const search = new URLSearchParams();
@@ -288,6 +291,62 @@ export function applyScriptAiDraft(
 ) {
   return client.post<ScriptAiDraftApplyResponse>(
     `/scripts/${scriptId}/documents/${documentType}/ai-generations/${generationId}/apply`,
+    payload,
+  );
+}
+
+export function createScriptQualityReview(
+  client: ApiClient,
+  scriptId: string,
+  payload: ScriptQualityReviewCreateInput = {},
+) {
+  return client.post<AiJob>(
+    `/scripts/${scriptId}/ai-quality-reviews`,
+    payload,
+  );
+}
+
+export function listScriptQualityReviews(
+  client: ApiClient,
+  scriptId: string,
+  params: { page?: number; page_size?: number } = {},
+) {
+  return client.get<PaginatedResponse<AiGeneration>>(
+    `/scripts/${scriptId}/ai-quality-reviews${toQuery({
+      page: params.page,
+      page_size: params.page_size,
+    })}`,
+  );
+}
+
+/** Returns null when the script has no quality review yet (404). */
+export async function getLatestScriptQualityReview(
+  client: ApiClient,
+  scriptId: string,
+): Promise<AiGeneration | null> {
+  try {
+    return await client.get<AiGeneration>(
+      `/scripts/${scriptId}/ai-quality-reviews/latest`,
+    );
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+export function applyScriptQualitySuggestion(
+  client: ApiClient,
+  scriptId: string,
+  generationId: string,
+  issueId: string,
+  payload: ScriptQualitySuggestionApplyInput = {
+    strategy: "replace_excerpt",
+  },
+) {
+  return client.post<ScriptQualitySuggestionApplyResponse>(
+    `/scripts/${scriptId}/ai-quality-reviews/${generationId}/suggestions/${issueId}/apply`,
     payload,
   );
 }

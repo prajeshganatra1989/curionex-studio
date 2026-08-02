@@ -160,8 +160,12 @@ export type AiGeneration = {
   provider_id: string;
   input_variables: Record<string, string>;
   output_text: string | null;
-  /** Present for structured-output jobs, e.g. Knowledge Pack drafts. */
-  structured_output?: KnowledgePackDraft | Record<string, unknown> | null;
+  /** Present for structured-output jobs, e.g. Knowledge Pack drafts or quality reviews. */
+  structured_output?:
+    | KnowledgePackDraft
+    | ScriptQualityReview
+    | Record<string, unknown>
+    | null;
   purpose?: string | null;
   knowledge_pack_id?: string | null;
   project_id?: string | null;
@@ -283,6 +287,170 @@ export type AiSettingsUpdateInput = Partial<
     | "default_target_words_per_minute"
   >
 >;
+
+export const SCRIPT_QUALITY_REVIEW_PURPOSE = "script.quality_review";
+
+export type ScriptQualityBand =
+  | "excellent"
+  | "strong"
+  | "needs_refinement"
+  | "weak"
+  | "major_revision_required";
+
+export type ScriptQualityRecommendation =
+  | "revise"
+  | "human_review"
+  | "ready_for_version";
+
+export type ScriptQualitySeverity = "critical" | "high" | "medium" | "low";
+export type ScriptQualityRiskLevel = "high" | "medium" | "low";
+export type ScriptQualityConfidence = "high" | "medium" | "low";
+export type ScriptQualityPacingStatus = "short" | "within_range" | "long";
+
+export type ScriptQualityDimensionKey =
+  | "hook"
+  | "curiosity"
+  | "retention"
+  | "clarity"
+  | "structure"
+  | "factual_safety"
+  | "viewer_promise"
+  | "payoff"
+  | "pacing"
+  | "spoken_naturalness"
+  | "conciseness"
+  | "brand_voice"
+  | "call_to_action"
+  | "duration_fit";
+
+export const SCRIPT_QUALITY_DIMENSIONS: ScriptQualityDimensionKey[] = [
+  "hook",
+  "curiosity",
+  "retention",
+  "clarity",
+  "structure",
+  "factual_safety",
+  "viewer_promise",
+  "payoff",
+  "pacing",
+  "spoken_naturalness",
+  "conciseness",
+  "brand_voice",
+  "call_to_action",
+  "duration_fit",
+];
+
+export type ScriptQualityDimensionReview = {
+  score: number;
+  assessment: string;
+  strengths: string[];
+  issues: string[];
+  suggested_action: string;
+};
+
+export type ScriptQualityPriorityIssue = {
+  id: string;
+  severity: ScriptQualitySeverity;
+  category: string;
+  location_hint: string;
+  original_excerpt: string;
+  problem: string;
+  recommended_change: string;
+  suggested_rewrite: string | null;
+};
+
+export type ScriptQualityFactualRisk = {
+  claim: string;
+  risk_level: ScriptQualityRiskLevel;
+  reason: string;
+  verification_needed: true;
+  related_source_note: string | null;
+};
+
+export type ScriptQualityRepeatedLanguage = {
+  term: string;
+  count: number;
+  suggestions: string[];
+};
+
+export type ScriptQualityPacingAnalysis = {
+  estimated_word_count: number;
+  estimated_duration_seconds: number;
+  target_duration_seconds: number;
+  target_words_per_minute?: number;
+  status: ScriptQualityPacingStatus;
+  slow_sections: string[];
+  rushed_sections: string[];
+  source?: string;
+};
+
+export type ScriptQualityPromiseAnalysis = {
+  promise_made: string;
+  promise_delivered: boolean;
+  explanation: string;
+};
+
+export type ScriptQualityDeterministicMetrics = {
+  word_count: number;
+  estimated_duration_seconds: number;
+  target_duration_seconds: number;
+  target_words_per_minute: number;
+  pacing_status: ScriptQualityPacingStatus;
+  master_script_fingerprint?: string;
+};
+
+/** Structured Script Quality Review returned by the AI quality review job. */
+export type ScriptQualityReview = {
+  overall_score: number;
+  model_overall_score?: number;
+  calculated_overall_score?: number;
+  quality_band: ScriptQualityBand;
+  quality_band_label: string;
+  confidence: ScriptQualityConfidence;
+  summary: string;
+  ready_for_human_review?: boolean;
+  dimensions: Record<string, ScriptQualityDimensionReview>;
+  priority_issues: ScriptQualityPriorityIssue[];
+  factual_risks: ScriptQualityFactualRisk[];
+  repeated_language?: ScriptQualityRepeatedLanguage[];
+  pacing_analysis: ScriptQualityPacingAnalysis;
+  promise_analysis: ScriptQualityPromiseAnalysis;
+  recommended_next_action: ScriptQualityRecommendation;
+  deterministic_metrics?: ScriptQualityDeterministicMetrics;
+  score_weights?: Record<string, number>;
+  warnings: string[];
+  /** Always false — AI never approves content. */
+  ai_approval: false;
+};
+
+export type ScriptQualityReviewCreateInput = {
+  model_id?: string | null;
+  language?: string;
+  target_duration_seconds?: number | null;
+  target_words_per_minute?: number | null;
+  idempotency_key?: string | null;
+};
+
+export type ScriptQualitySuggestionApplyInput = {
+  strategy: "replace_excerpt";
+};
+
+export type ScriptQualitySuggestionApplyResponse = {
+  document: {
+    id: string;
+    script_id: string;
+    document_type: string;
+    title: string;
+    content: string;
+    position: number;
+    created_at: string;
+    updated_at: string;
+  };
+  generation_id: string;
+  issue_id: string;
+  strategy: string;
+  stale_input: boolean;
+};
 
 export type ScriptAiDraftCreateInput = {
   model_id?: string | null;

@@ -10,17 +10,20 @@ import {
   activatePromptVersion,
   applyKnowledgePackAiDraft,
   applyScriptAiDraft,
+  applyScriptQualitySuggestion,
   cancelJob,
   createJob,
   createKnowledgePackAiDraft,
   createPrompt,
   createPromptVersion,
   createScriptAiDraft,
+  createScriptQualityReview,
   deleteProviderCredentials,
   findGenerationIdForJob,
   getAiSettings,
   getGeneration,
   getJob,
+  getLatestScriptQualityReview,
   getModel,
   getPrompt,
   getProvider,
@@ -33,6 +36,7 @@ import {
   listProviders,
   listScriptAiDrafts,
   listScriptDocumentAiDrafts,
+  listScriptQualityReviews,
   setProviderCredentials,
   updateAiSettings,
   updateModel,
@@ -56,8 +60,11 @@ import type {
   KnowledgePackAiDraftCreateInput,
   ScriptAiDraftApplyInput,
   ScriptAiDraftCreateInput,
+  ScriptQualityReviewCreateInput,
+  ScriptQualitySuggestionApplyInput,
 } from "@/lib/ai/types";
 import { useAuth } from "@/lib/auth/auth-context";
+import { scriptKeys } from "@/lib/scripts/hooks";
 
 const TERMINAL_JOB_STATUSES = new Set<AiJobStatus>([
   "completed",
@@ -97,6 +104,14 @@ export const aiKeys = {
     [...aiKeys.scriptDrafts(scriptId), "document", documentType] as const,
   scriptPrerequisites: (scriptId: string, documentType: string) =>
     [...aiKeys.scriptDrafts(scriptId), "prerequisites", documentType] as const,
+  scriptQualityReviews: (scriptId: string) =>
+    [...aiKeys.all, "script-quality-reviews", scriptId] as const,
+  scriptQualityReviewList: (
+    scriptId: string,
+    params: { page?: number; page_size?: number },
+  ) => [...aiKeys.scriptQualityReviews(scriptId), "list", params] as const,
+  scriptQualityReviewLatest: (scriptId: string) =>
+    [...aiKeys.scriptQualityReviews(scriptId), "latest"] as const,
 };
 
 export function useAiProviders() {
@@ -493,6 +508,83 @@ export function useApplyScriptAiDraft(
       });
       void qc.invalidateQueries({
         queryKey: aiKeys.scriptDrafts(scriptId),
+      });
+    },
+  });
+}
+
+export function useCreateScriptQualityReview(scriptId: string) {
+  const { api } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: ScriptQualityReviewCreateInput = {}) =>
+      createScriptQualityReview(api, scriptId, payload),
+    onSuccess: (job) => {
+      qc.setQueryData(aiKeys.job(job.id), job);
+      void qc.invalidateQueries({ queryKey: aiKeys.jobs() });
+      void qc.invalidateQueries({
+        queryKey: aiKeys.scriptQualityReviews(scriptId),
+      });
+    },
+  });
+}
+
+export function useScriptQualityReviews(
+  scriptId: string,
+  params: { page?: number; page_size?: number } = {},
+) {
+  const { api, status } = useAuth();
+  return useQuery({
+    queryKey: aiKeys.scriptQualityReviewList(scriptId, params),
+    queryFn: () => listScriptQualityReviews(api, scriptId, params),
+    enabled: status === "authenticated" && Boolean(scriptId),
+  });
+}
+
+export function useLatestScriptQualityReview(
+  scriptId: string,
+  options: { enabled?: boolean } = {},
+) {
+  const { api, status } = useAuth();
+  return useQuery({
+    queryKey: aiKeys.scriptQualityReviewLatest(scriptId),
+    queryFn: () => getLatestScriptQualityReview(api, scriptId),
+    enabled:
+      status === "authenticated" &&
+      Boolean(scriptId) &&
+      (options.enabled ?? true),
+  });
+}
+
+export function useApplyScriptQualitySuggestion(scriptId: string) {
+  const { api } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      generationId,
+      issueId,
+      payload,
+    }: {
+      generationId: string;
+      issueId: string;
+      payload?: ScriptQualitySuggestionApplyInput;
+    }) =>
+      applyScriptQualitySuggestion(
+        api,
+        scriptId,
+        generationId,
+        issueId,
+        payload ?? { strategy: "replace_excerpt" },
+      ),
+    onSuccess: (result) => {
+      void qc.invalidateQueries({
+        queryKey: aiKeys.generation(result.generation_id),
+      });
+      void qc.invalidateQueries({
+        queryKey: aiKeys.scriptQualityReviews(scriptId),
+      });
+      void qc.invalidateQueries({
+        queryKey: scriptKeys.detail(scriptId),
       });
     },
   });

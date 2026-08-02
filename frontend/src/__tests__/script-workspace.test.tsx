@@ -81,6 +81,19 @@ vi.mock("@/lib/api/approvals", async () => {
   };
 });
 
+const getLatestScriptQualityReview = vi.fn();
+
+vi.mock("@/lib/api/ai", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/api/ai")>(
+    "@/lib/api/ai",
+  );
+  return {
+    ...actual,
+    getLatestScriptQualityReview: (...args: unknown[]) =>
+      getLatestScriptQualityReview(...args),
+  };
+});
+
 vi.mock("@/lib/auth/auth-context", () => ({
   useAuth: () => ({
     status: "authenticated",
@@ -205,10 +218,12 @@ describe("ScriptWorkspace", () => {
     listProjectKnowledgePacks.mockReset();
     listScriptContentVersions.mockReset();
     getApprovalDetail.mockReset();
+    getLatestScriptQualityReview.mockReset();
 
     getProject.mockResolvedValue(project);
     getScript.mockResolvedValue(makeScript());
     getWorkflowStatus.mockResolvedValue(makeWorkflow());
+    getLatestScriptQualityReview.mockResolvedValue(null);
     getScriptWorkflow.mockResolvedValue({
       id: "wf-1",
       script_id: "sc-1",
