@@ -1,12 +1,15 @@
 export class ApiError extends Error {
   readonly status: number;
   readonly detail: string;
+  /** Raw JSON `detail` payload when it is not a plain string (e.g. structured conflict errors). */
+  readonly data?: unknown;
 
-  constructor(status: number, detail: string) {
+  constructor(status: number, detail: string, data?: unknown) {
     super(detail);
     this.name = "ApiError";
     this.status = status;
     this.detail = detail;
+    this.data = data;
   }
 }
 
@@ -25,12 +28,13 @@ function resolveBaseUrl(explicit?: string): string {
 
 async function parseError(response: Response): Promise<ApiError> {
   let detail = `Request failed (${response.status})`;
+  let data: unknown;
   try {
-    const data = (await response.json()) as { detail?: unknown };
-    if (typeof data.detail === "string") {
-      detail = data.detail;
-    } else if (Array.isArray(data.detail)) {
-      detail = data.detail
+    const body = (await response.json()) as { detail?: unknown };
+    if (typeof body.detail === "string") {
+      detail = body.detail;
+    } else if (Array.isArray(body.detail)) {
+      detail = body.detail
         .map((item) => {
           if (typeof item === "string") return item;
           if (item && typeof item === "object" && "msg" in item) {
@@ -39,11 +43,16 @@ async function parseError(response: Response): Promise<ApiError> {
           return JSON.stringify(item);
         })
         .join("; ");
+    } else if (body.detail && typeof body.detail === "object") {
+      // Structured detail (e.g. { message, conflicts } on 409 conflict responses).
+      data = body.detail;
+      const message = (body.detail as { message?: unknown }).message;
+      if (typeof message === "string") detail = message;
     }
   } catch {
     // Keep default detail.
   }
-  return new ApiError(response.status, detail);
+  return new ApiError(response.status, detail, data);
 }
 
 export function createApiClient(options: ApiClientOptions = {}) {

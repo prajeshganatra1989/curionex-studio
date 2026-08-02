@@ -10,6 +10,7 @@ import { ErrorState } from "@/components/ui/error-state";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { Modal } from "@/components/ui/modal";
 import { Pagination } from "@/components/ui/pagination";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { useAiGeneration, useAiGenerations } from "@/lib/ai/hooks";
 import type { AiGeneration } from "@/lib/ai/types";
 import { ApiError } from "@/lib/api/client";
@@ -30,9 +31,29 @@ function formatCost(value: number | null): string {
   return `$${value.toFixed(4)}`;
 }
 
+function isApplied(generation: AiGeneration): boolean {
+  return Boolean(generation.applied_sections && generation.applied_sections.length > 0);
+}
+
+function draftLink(generation: AiGeneration): string | null {
+  if (!generation.knowledge_pack_id || !generation.project_id) return null;
+  return `/projects/${generation.project_id}/knowledge-packs/${generation.knowledge_pack_id}`;
+}
+
 function GenerationDetail({ generation }: { generation: AiGeneration }) {
+  const link = draftLink(generation);
   return (
     <div className="space-y-4" data-testid="generation-detail">
+      {generation.purpose === "knowledge_pack.draft" ? (
+        <div
+          className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2.5 text-xs text-foreground"
+          role="note"
+        >
+          AI-generated content requires review and source verification before
+          publishing.
+        </div>
+      ) : null}
+
       <dl className="grid gap-3 text-sm sm:grid-cols-2">
         <div>
           <dt className="text-muted-foreground">Job</dt>
@@ -44,6 +65,18 @@ function GenerationDetail({ generation }: { generation: AiGeneration }) {
           <dt className="text-muted-foreground">Created</dt>
           <dd className="text-foreground">
             {formatRelativeTime(generation.created_at)}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground">Purpose</dt>
+          <dd className="text-foreground">{generation.purpose ?? "—"}</dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground">Applied</dt>
+          <dd className="text-foreground">
+            {isApplied(generation)
+              ? `Yes — ${generation.applied_sections?.join(", ")}`
+              : "Not applied"}
           </dd>
         </div>
         <div>
@@ -59,7 +92,13 @@ function GenerationDetail({ generation }: { generation: AiGeneration }) {
           </dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">Cost</dt>
+          <dt className="text-muted-foreground">Tokens total</dt>
+          <dd className="tabular-nums text-foreground">
+            {generation.tokens_total ?? "—"}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground">Estimated cost</dt>
           <dd className="tabular-nums text-foreground">
             {formatCost(generation.cost_usd)}
           </dd>
@@ -73,6 +112,15 @@ function GenerationDetail({ generation }: { generation: AiGeneration }) {
           </dd>
         </div>
       </dl>
+
+      {link ? (
+        <Link
+          href={link}
+          className="inline-flex text-sm font-medium text-brand-orange underline"
+        >
+          Open Draft in Knowledge Pack
+        </Link>
+      ) : null}
 
       <div>
         <h3 className="mb-2 text-sm font-medium text-foreground">Output</h3>
@@ -182,41 +230,70 @@ export function GenerationsPage() {
             className="divide-y divide-border rounded-xl border border-border/70 bg-surface/40"
             data-testid="generations-list"
           >
-            {items.map((item) => (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  className="flex w-full items-start justify-between gap-3 px-4 py-4 text-left transition hover:bg-surface-hover"
-                  onClick={() => setSelectedId(item.id)}
-                >
-                  <div className="min-w-0">
-                    <p className="font-mono text-sm text-foreground">
-                      {item.id.slice(0, 12)}…
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      <time dateTime={item.created_at}>
-                        {formatRelativeTime(item.created_at)}
-                      </time>
-                      {item.tokens_input != null ? (
-                        <>
-                          <span aria-hidden> · </span>
-                          {item.tokens_input}+{item.tokens_output ?? 0} tokens
-                        </>
+            {items.map((item) => {
+              const link = draftLink(item);
+              return (
+                <li key={item.id}>
+                  <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-4">
+                    <button
+                      type="button"
+                      className="min-w-0 flex-1 text-left"
+                      onClick={() => setSelectedId(item.id)}
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-mono text-sm text-foreground">
+                          {item.id.slice(0, 12)}…
+                        </p>
+                        {item.purpose ? (
+                          <span className="rounded-md border border-border bg-surface-hover px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                            {item.purpose}
+                          </span>
+                        ) : null}
+                        {isApplied(item) ? (
+                          <StatusBadge status="completed" />
+                        ) : null}
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        <time dateTime={item.created_at}>
+                          {formatRelativeTime(item.created_at)}
+                        </time>
+                        {item.tokens_total != null || item.tokens_input != null ? (
+                          <>
+                            <span aria-hidden> · </span>
+                            {item.tokens_total ??
+                              (item.tokens_input ?? 0) + (item.tokens_output ?? 0)}{" "}
+                            tokens
+                          </>
+                        ) : null}
+                        {item.cost_usd != null ? (
+                          <>
+                            <span aria-hidden> · </span>
+                            {formatCost(item.cost_usd)} est.
+                          </>
+                        ) : null}
+                      </p>
+                    </button>
+                    <div className="flex shrink-0 items-center gap-3">
+                      {link ? (
+                        <Link
+                          href={link}
+                          className="text-xs font-medium text-brand-orange underline"
+                        >
+                          Open Draft
+                        </Link>
                       ) : null}
-                      {item.cost_usd != null ? (
-                        <>
-                          <span aria-hidden> · </span>
-                          {formatCost(item.cost_usd)}
-                        </>
-                      ) : null}
-                    </p>
+                      <button
+                        type="button"
+                        className="text-xs text-brand-orange"
+                        onClick={() => setSelectedId(item.id)}
+                      >
+                        View
+                      </button>
+                    </div>
                   </div>
-                  <span className="shrink-0 text-xs text-brand-orange">
-                    View
-                  </span>
-                </button>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
           <div className="mt-4">
             <Pagination

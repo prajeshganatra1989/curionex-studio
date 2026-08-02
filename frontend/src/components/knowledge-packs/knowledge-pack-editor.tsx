@@ -9,8 +9,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { ArrowLeft, ArrowRight, List, Save } from "lucide-react";
+import { ArrowLeft, ArrowRight, List, Save, Sparkles } from "lucide-react";
 
+import { AiDraftReviewPanel } from "@/components/knowledge-packs/ai-draft-review-panel";
+import { GenerateAiDraftDialog } from "@/components/knowledge-packs/generate-ai-draft-dialog";
 import { KnowledgePackSection } from "@/components/knowledge-packs/knowledge-pack-section";
 import { ProgressSidebar } from "@/components/knowledge-packs/progress-sidebar";
 import { SaveIndicator } from "@/components/knowledge-packs/save-indicator";
@@ -20,10 +22,11 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { Modal } from "@/components/ui/modal";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useToast } from "@/components/ui/toast";
 import { ApiError } from "@/lib/api/client";
-import { updateKnowledgePackSection } from "@/lib/api/projects";
+import { getKnowledgePack, updateKnowledgePackSection } from "@/lib/api/projects";
 import type { KnowledgePackSection as SectionRow } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/auth-context";
 import {
@@ -90,6 +93,10 @@ export function KnowledgePackEditor() {
   const [hydrated, setHydrated] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [justSavedAt, setJustSavedAt] = useState<number | null>(null);
+  const [aiDraftDialogOpen, setAiDraftDialogOpen] = useState(false);
+  const [aiReviewGenerationId, setAiReviewGenerationId] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!packQuery.data || hydrated) return;
@@ -230,6 +237,67 @@ export function KnowledgePackEditor() {
       toast({
         title: "Save failed",
         description: "Your local edits are preserved. Try again.",
+        tone: "error",
+      });
+    }
+  }
+
+  function handleDraftReady(generationId: string) {
+    setAiDraftDialogOpen(false);
+    setAiReviewGenerationId(generationId);
+  }
+
+  async function handleDraftApplied({
+    appliedSections,
+  }: {
+    appliedSections: string[];
+  }) {
+    setAiReviewGenerationId(null);
+    try {
+      const fresh = await getKnowledgePack(api, knowledgePackId);
+      queryClient.setQueryData(knowledgePackKeys.detail(knowledgePackId), fresh);
+
+      // Only advance drafts/baseline for the sections that were just applied —
+      // any unsaved local edits on other sections must be preserved.
+      setDrafts((prev) => {
+        const next = { ...prev };
+        for (const key of appliedSections) {
+          const match = fresh.sections.find((s) => s.section_key === key);
+          if (match) next[key] = match.content;
+        }
+        return next;
+      });
+      setBaseline((prev) => {
+        const next = { ...prev };
+        for (const key of appliedSections) {
+          const match = fresh.sections.find((s) => s.section_key === key);
+          if (match) next[key] = match.content;
+        }
+        return next;
+      });
+      setSavedAt((prev) => {
+        const next = { ...prev };
+        for (const key of appliedSections) {
+          const match = fresh.sections.find((s) => s.section_key === key);
+          if (match) next[key] = match.updated_at;
+        }
+        return next;
+      });
+      setErrors((prev) => {
+        const next = { ...prev };
+        for (const key of appliedSections) delete next[key];
+        return next;
+      });
+
+      toast({
+        title: "AI draft applied",
+        description: `${appliedSections.length} section${appliedSections.length === 1 ? "" : "s"} updated. Review before publishing.`,
+        tone: "success",
+      });
+    } catch {
+      toast({
+        title: "Draft applied, but the pack could not be refreshed",
+        description: "Reload the page to see the latest content.",
         tone: "error",
       });
     }
@@ -380,6 +448,14 @@ export function KnowledgePackEditor() {
             <Button
               type="button"
               variant="secondary"
+              onClick={() => setAiDraftDialogOpen(true)}
+            >
+              <Sparkles className="h-4 w-4" />
+              Generate AI Draft
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
               onClick={() => router.push(`/projects/${projectId}/scripts`)}
             >
               Generate Script
@@ -434,6 +510,34 @@ export function KnowledgePackEditor() {
           </div>
         </div>
       </div>
+
+      <GenerateAiDraftDialog
+        open={aiDraftDialogOpen}
+        onClose={() => setAiDraftDialogOpen(false)}
+        projectId={projectId}
+        knowledgePackId={knowledgePackId}
+        packName={pack.name}
+        projectName={project?.name}
+        onDraftReady={handleDraftReady}
+      />
+
+      <Modal
+        open={Boolean(aiReviewGenerationId)}
+        onClose={() => setAiReviewGenerationId(null)}
+        title="Review AI Draft"
+        description="Select which sections to bring into this Knowledge Pack."
+        size="lg"
+      >
+        {aiReviewGenerationId ? (
+          <AiDraftReviewPanel
+            knowledgePackId={knowledgePackId}
+            generationId={aiReviewGenerationId}
+            currentSectionContents={drafts}
+            onApplied={(result) => void handleDraftApplied(result)}
+            onClose={() => setAiReviewGenerationId(null)}
+          />
+        ) : null}
+      </Modal>
     </WorkspaceShell>
   );
 }

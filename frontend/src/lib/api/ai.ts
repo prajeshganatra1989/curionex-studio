@@ -18,6 +18,9 @@ import type {
   AiProviderUpdateInput,
   AiSettings,
   AiSettingsUpdateInput,
+  KnowledgePackAiDraftApplyInput,
+  KnowledgePackAiDraftApplyResponse,
+  KnowledgePackAiDraftCreateInput,
   PaginatedResponse,
 } from "@/lib/ai/types";
 
@@ -180,6 +183,47 @@ export function listGenerations(
 
 export function getGeneration(client: ApiClient, generationId: string) {
   return client.get<AiGeneration>(`/ai/generations/${generationId}`);
+}
+
+export function createKnowledgePackAiDraft(
+  client: ApiClient,
+  projectId: string,
+  knowledgePackId: string,
+  payload: KnowledgePackAiDraftCreateInput = {},
+) {
+  return client.post<AiJob>(
+    `/projects/${projectId}/knowledge-packs/${knowledgePackId}/ai-drafts`,
+    payload,
+  );
+}
+
+export function applyKnowledgePackAiDraft(
+  client: ApiClient,
+  knowledgePackId: string,
+  generationId: string,
+  payload: KnowledgePackAiDraftApplyInput,
+) {
+  return client.post<KnowledgePackAiDraftApplyResponse>(
+    `/knowledge-packs/${knowledgePackId}/ai-generations/${generationId}/apply`,
+    payload,
+  );
+}
+
+/**
+ * Best-effort lookup of the generation produced by a job.
+ *
+ * The API does not expose a job -> generation link directly, but every
+ * generation records its `job_id`, and generations are listed newest-first.
+ * Knowledge Pack draft jobs execute synchronously, so the matching
+ * generation is reliably near the top of the first page.
+ */
+export async function findGenerationIdForJob(
+  client: ApiClient,
+  jobId: string,
+): Promise<string | null> {
+  const response = await listGenerations(client, { page: 1, page_size: 25 });
+  const match = response.items.find((item) => item.job_id === jobId);
+  return match ? match.id : null;
 }
 
 export function getAiSettings(client: ApiClient) {

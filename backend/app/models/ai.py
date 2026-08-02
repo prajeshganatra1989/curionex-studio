@@ -245,6 +245,23 @@ class AiJob(Base):
     input_variables_json: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )
+    purpose: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    knowledge_pack_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("knowledge_packs.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    project_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("projects.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    idempotency_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    cancel_requested: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
     started_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -299,15 +316,39 @@ class AiGeneration(Base):
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )
     output_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    structured_output_json: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB, nullable=True
+    )
+    purpose: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    knowledge_pack_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("knowledge_packs.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    project_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("projects.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     tokens_input: Mapped[int | None] = mapped_column(Integer, nullable=True)
     tokens_output: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    tokens_total: Mapped[int | None] = mapped_column(Integer, nullable=True)
     cost_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    provider_request_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    model_identifier: Mapped[str | None] = mapped_column(String(200), nullable=True)
     reasoning_metadata_json: Mapped[dict[str, Any] | None] = mapped_column(
         JSONB, nullable=True
     )
     temperature: Mapped[float | None] = mapped_column(Float, nullable=True)
     seed: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    applied_sections_json: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+    applied_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
