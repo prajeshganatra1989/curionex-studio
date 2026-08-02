@@ -5,17 +5,28 @@ import { formatRelativeTime } from "@/lib/utils";
 type ActivityTimelineProps = {
   items: RecentActivity[];
   restricted?: boolean;
+  unavailable?: boolean;
 };
 
 export function ActivityTimeline({
   items,
   restricted = false,
+  unavailable = false,
 }: ActivityTimelineProps) {
   if (restricted) {
     return (
       <EmptyState
         title="Activity restricted"
         description="You need the audit.view permission to see recent activity."
+      />
+    );
+  }
+
+  if (unavailable) {
+    return (
+      <EmptyState
+        title="Temporarily unavailable"
+        description="Could not load recent activity. Try Refresh."
       />
     );
   }

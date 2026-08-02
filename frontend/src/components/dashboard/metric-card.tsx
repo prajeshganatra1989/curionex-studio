@@ -1,15 +1,18 @@
 import type { LucideIcon } from "lucide-react";
 
+import type { MetricAvailability } from "@/lib/dashboard/types";
 import { cn } from "@/lib/utils";
 
 type MetricCardProps = {
   label: string;
-  value: number | string;
+  value: number | null;
+  availability: MetricAvailability;
   hint?: string;
   icon: LucideIcon;
   accent?: "brand" | "info" | "success" | "warning";
   className?: string;
-  isDemo?: boolean;
+  /** Format a live numeric value (e.g. quality score). */
+  formatValue?: (value: number) => string;
 };
 
 const accentMap = {
@@ -19,35 +22,51 @@ const accentMap = {
   warning: "text-warning bg-warning/10 border-warning/25",
 };
 
+function displayValue(
+  value: number | null,
+  availability: MetricAvailability,
+  formatValue?: (value: number) => string,
+): string {
+  if (availability === "restricted") return "Restricted";
+  if (availability === "unavailable") return "Unavailable";
+  if (value == null) return "—";
+  return formatValue ? formatValue(value) : String(value);
+}
+
 export function MetricCard({
   label,
   value,
+  availability,
   hint,
   icon: Icon,
   accent = "brand",
   className,
-  isDemo = false,
+  formatValue,
 }: MetricCardProps) {
+  const shown = displayValue(value, availability, formatValue);
+  const isNumericLive = availability === "live" && value != null;
+
   return (
     <article
       className={cn(
         "panel group flex min-w-0 items-start justify-between gap-3 p-4 transition hover:border-border-strong hover:bg-surface-elevated",
         className,
       )}
+      data-availability={availability}
     >
       <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {label}
-          </p>
-          {isDemo ? (
-            <span className="rounded border border-border px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-muted-foreground">
-              Demo
-            </span>
-          ) : null}
-        </div>
-        <p className="mt-2 text-2xl font-semibold tracking-tight tabular-nums text-foreground sm:text-3xl">
-          {value}
+        <p className="truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          {label}
+        </p>
+        <p
+          className={cn(
+            "mt-2 font-semibold tracking-tight text-foreground",
+            isNumericLive
+              ? "text-2xl tabular-nums sm:text-3xl"
+              : "text-base sm:text-lg",
+          )}
+        >
+          {shown}
         </p>
         {hint ? (
           <p className="mt-1 truncate text-xs text-muted-foreground">{hint}</p>

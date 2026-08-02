@@ -18,6 +18,19 @@
 
 Overview also exposes live AI job tallies (`queued` / `running` / `failed` / `completed_today`) and quality rollups (`average_current_score`, `scripts_needing_revision`, `stale_reviews`, `high_risk_fact_flags`) over current classified units — not a historical range.
 
+## Overview catalog counts
+
+`GET /production/overview` includes membership-scoped `catalog`:
+
+| Field | Meaning |
+|-------|---------|
+| `projects` | Count of accessible `ProjectMember` project IDs |
+| `knowledge_packs` | Knowledge packs on those projects |
+| `scripts` | Non-archived scripts on those projects |
+| `draft_scripts` | Scripts with status `draft` |
+
+Used by the Dashboard for Knowledge Pack / Scripts / Draft cards so the UI never paginates to count.
+
 ## Activity
 
 `GET /production/activity` lists recent production-relevant audit events when the caller has `audit.view`. Without it, the response is `{ items: [], restricted: true }`.

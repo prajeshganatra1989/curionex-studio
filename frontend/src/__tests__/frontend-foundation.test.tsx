@@ -145,7 +145,12 @@ describe("tokenStore", () => {
 describe("Dashboard pieces", () => {
   it("renders metric card", () => {
     wrap(
-      <MetricCard label="Projects" value={12} icon={FolderKanban} />,
+      <MetricCard
+        label="Projects"
+        value={12}
+        availability="live"
+        icon={FolderKanban}
+      />,
     );
     expect(screen.getByText("Projects")).toBeInTheDocument();
     expect(screen.getByText("12")).toBeInTheDocument();
@@ -155,16 +160,20 @@ describe("Dashboard pieces", () => {
     wrap(
       <DailyGoalCard
         goal={{
-          label: "2 videos per day",
+          label: "2 approved scripts per day",
           completed: 1,
           target: 2,
-          isDemo: true,
+          remaining: 118,
+          completionPercent: 1.6,
+          weeklyCompleted: 0,
+          weeklyTarget: 14,
+          availability: "live",
         }}
       />,
     );
     expect(screen.getByText(/today'?s goal/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/50% of daily goal/i)).toBeInTheDocument();
-    expect(screen.getByText(/demo/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 \/ 2/)).toBeInTheDocument();
   });
 
   it("renders recent projects", () => {
@@ -192,6 +201,7 @@ describe("Dashboard pieces", () => {
         scripts={[
           {
             id: "1",
+            projectId: "p1",
             title: "Event Horizon",
             projectCode: "CRX-0001",
             status: "draft",

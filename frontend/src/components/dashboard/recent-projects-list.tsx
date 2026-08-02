@@ -7,9 +7,33 @@ import { formatRelativeTime, initials } from "@/lib/utils";
 
 type RecentProjectsListProps = {
   projects: RecentProject[];
+  restricted?: boolean;
+  unavailable?: boolean;
 };
 
-export function RecentProjectsList({ projects }: RecentProjectsListProps) {
+export function RecentProjectsList({
+  projects,
+  restricted = false,
+  unavailable = false,
+}: RecentProjectsListProps) {
+  if (restricted) {
+    return (
+      <EmptyState
+        title="Projects restricted"
+        description="You do not have permission to list projects."
+      />
+    );
+  }
+
+  if (unavailable) {
+    return (
+      <EmptyState
+        title="Temporarily unavailable"
+        description="Could not load recent projects. Try Refresh."
+      />
+    );
+  }
+
   if (projects.length === 0) {
     return (
       <EmptyState

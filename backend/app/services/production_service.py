@@ -78,6 +78,7 @@ from app.production.stages import (
 )
 from app.schemas.production import ProductionSettingsUpdate
 from app.scripts.catalog import DOCUMENT_TYPES
+from app.scripts.constants import SCRIPT_STATUS_ARCHIVED, SCRIPT_STATUS_DRAFT
 from app.services.audit_service import record_audit_event
 from app.services.rbac_service import has_permission
 from app.workflows.snapshot import SnapshotValidationError, build_workspace_snapshot
@@ -281,6 +282,54 @@ def _kp_completion(sections: list[KnowledgePackSection]) -> tuple[int, bool, dic
             filled += 1
     percent = int(round((filled / SECTION_COUNT) * 100)) if SECTION_COUNT else 0
     return percent, filled >= SECTION_COUNT and SECTION_COUNT > 0, hashes
+
+
+def _catalog_counts(db: Session, accessible: set[UUID]) -> dict[str, int]:
+    """Membership-scoped project / pack / script totals (indexed FK filters)."""
+    if not accessible:
+        return {
+            "projects": 0,
+            "knowledge_packs": 0,
+            "scripts": 0,
+            "draft_scripts": 0,
+        }
+
+    knowledge_packs = int(
+        db.scalar(
+            select(func.count())
+            .select_from(KnowledgePack)
+            .where(KnowledgePack.project_id.in_(accessible))
+        )
+        or 0
+    )
+    scripts = int(
+        db.scalar(
+            select(func.count())
+            .select_from(Script)
+            .where(
+                Script.project_id.in_(accessible),
+                Script.status != SCRIPT_STATUS_ARCHIVED,
+            )
+        )
+        or 0
+    )
+    draft_scripts = int(
+        db.scalar(
+            select(func.count())
+            .select_from(Script)
+            .where(
+                Script.project_id.in_(accessible),
+                Script.status == SCRIPT_STATUS_DRAFT,
+            )
+        )
+        or 0
+    )
+    return {
+        "projects": len(accessible),
+        "knowledge_packs": knowledge_packs,
+        "scripts": scripts,
+        "draft_scripts": draft_scripts,
+    }
 
 
 def _openai_provider_blocker(db: Session) -> bool:
@@ -1064,6 +1113,7 @@ def build_overview(db: Session, user: User) -> dict[str, Any]:
             "stale_reviews": stale_reviews,
             "high_risk_fact_flags": high_risk_fact_flags,
         },
+        "catalog": _catalog_counts(db, accessible),
     }
 
 

@@ -92,11 +92,19 @@ export type ProductionQualitySummary = {
   high_risk_fact_flags: number;
 };
 
+export type ProductionCatalogSummary = {
+  projects: number;
+  knowledge_packs: number;
+  scripts: number;
+  draft_scripts: number;
+};
+
 export type ProductionOverview = {
   goals: ProductionGoalsSummary;
   stage_counts: Record<string, number>;
   ai: ProductionAiSummary;
   quality: ProductionQualitySummary;
+  catalog: ProductionCatalogSummary;
 };
 
 export type ProductionDocumentStatuses = {
