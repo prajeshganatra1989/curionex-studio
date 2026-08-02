@@ -38,11 +38,14 @@ Queue, overview, and metrics only include projects where the caller is a `Projec
 
 ## Related
 
+- [007-voice-narration-bible-v1.md](./007-voice-narration-bible-v1.md) — **Voice & Narration Bible v1.0**
+- [README.md](./README.md) — production docs index
 - [002-production-stage-classification.md](002-production-stage-classification.md)
 - [003-next-action-engine.md](003-next-action-engine.md)
 - [004-production-goals.md](004-production-goals.md)
 - [005-production-metrics.md](005-production-metrics.md)
 - Editorial Library: [../editorial/001-editorial-library.md](../editorial/001-editorial-library.md)
+- Editorial Bible: [../editorial/020-editorial-bible-v1.md](../editorial/020-editorial-bible-v1.md)
 - Production Catalog: [../editorial/006-production-catalog.md](../editorial/006-production-catalog.md)
 - Production Session: [./006-production-session.md](./006-production-session.md)
 - Frontend: [../frontend/015-production-mode-ui.md](../frontend/015-production-mode-ui.md)

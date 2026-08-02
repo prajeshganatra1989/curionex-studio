@@ -30,4 +30,5 @@ Hook → Context → Explanation → Twist → Payoff → CTA
 See also:
 
 - [020-editorial-bible-v1.md](./020-editorial-bible-v1.md) — full principle set + Founding Collection
+- [../production/007-voice-narration-bible-v1.md](../production/007-voice-narration-bible-v1.md) — Voice & Narration Bible v1.0
 - [007-curionex-content-standard.md](./007-curionex-content-standard.md)
