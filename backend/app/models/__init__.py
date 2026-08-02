@@ -12,6 +12,7 @@ from app.models.ai import (
 )
 from app.models.audit import AuditLog
 from app.models.content_version import Approval, ContentVersion
+from app.models.editorial import EditorialTopic
 from app.models.knowledge_pack import KnowledgePack, KnowledgePackSection
 from app.models.production import ProductionSettings
 from app.models.project import Category, Project, ProjectMember, ProjectTag, Tag
@@ -34,6 +35,7 @@ __all__ = [
     "Category",
     "ContentVersion",
     "ContentWorkflow",
+    "EditorialTopic",
     "KnowledgePack",
     "KnowledgePackSection",
     "Permission",

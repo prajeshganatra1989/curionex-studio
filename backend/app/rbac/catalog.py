@@ -180,6 +180,26 @@ PERMISSION_CATALOG: list[dict[str, str]] = [
         "name": "Manage production goals",
         "description": "Manage Production Mode goals and settings",
     },
+    {
+        "code": "editorial_topics.view",
+        "name": "View editorial topics",
+        "description": "View Editorial Library topics",
+    },
+    {
+        "code": "editorial_topics.create",
+        "name": "Create editorial topics",
+        "description": "Create Editorial Library topics",
+    },
+    {
+        "code": "editorial_topics.update",
+        "name": "Update editorial topics",
+        "description": "Update Editorial Library topics and link projects",
+    },
+    {
+        "code": "editorial_topics.delete",
+        "name": "Archive editorial topics",
+        "description": "Soft-archive Editorial Library topics",
+    },
 ]
 
 ALL_PERMISSION_CODES: list[str] = [item["code"] for item in PERMISSION_CATALOG]
@@ -220,6 +240,10 @@ ROLE_CATALOG: dict[str, dict] = {
             "prompt.manage",
             "production.view",
             "production.manage",
+            "editorial_topics.view",
+            "editorial_topics.create",
+            "editorial_topics.update",
+            "editorial_topics.delete",
         ],
     },
     "Script Writer": {
@@ -241,6 +265,7 @@ ROLE_CATALOG: dict[str, dict] = {
             "ai.generate",
             "prompt.manage",
             "production.view",
+            "editorial_topics.view",
         ],
     },
     "Reviewer": {
@@ -258,6 +283,7 @@ ROLE_CATALOG: dict[str, dict] = {
             "approvals.review",
             "ai.view",
             "production.view",
+            "editorial_topics.view",
         ],
     },
 }

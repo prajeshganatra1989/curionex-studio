@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { LayoutGrid, List, Plus, Settings2 } from "lucide-react";
+import { LayoutGrid, Library, List, Plus, Settings2 } from "lucide-react";
 
 import { AiOpsPanel } from "@/components/production/ai-ops-panel";
+import { EditorialTopicsPanel } from "@/components/production/editorial-topics-panel";
 import { GoalHero } from "@/components/production/goal-hero";
 import { ProductionSettingsDialog } from "@/components/production/production-settings-dialog";
 import { QualityPanel } from "@/components/production/quality-panel";
@@ -253,6 +254,13 @@ export function ProductionPage() {
               Settings
             </Button>
             <Link
+              href="/topics"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border bg-surface-elevated px-4 text-sm text-foreground hover:bg-surface-hover"
+            >
+              <Library className="h-4 w-4" />
+              Browse Topics
+            </Link>
+            <Link
               href="/projects"
               className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-brand-gradient px-4 text-sm font-semibold text-black shadow-[var(--glow-brand)] hover:brightness-110"
             >
@@ -279,6 +287,10 @@ export function ProductionPage() {
           metrics={metricsQuery.data}
           isLoading={metricsQuery.isLoading}
         />
+      </div>
+
+      <div className="mb-4">
+        <EditorialTopicsPanel />
       </div>
 
       {isEmptyCatalog ? (
