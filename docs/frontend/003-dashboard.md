@@ -20,10 +20,10 @@ Dashboard data loads through `src/lib/dashboard/data.ts` via `getDashboardData(a
 |-------|--------|-----------|
 | Projects metric | Live — `GET /projects` `total` | No Demo badge |
 | Recent Projects | Live — first page of `GET /projects` | Live |
-| Knowledge Packs / Scripts / Drafts / Reviews / Approved metrics | Demo adapter | Demo per card |
+| Pending Reviews metric + panel | Live — `GET /approvals?status=pending` | Live (403 → restricted empty state) |
+| Knowledge Packs / Scripts / Drafts / Approved metrics | Demo adapter | Demo per card |
 | Daily goal | Demo adapter | Demo |
 | Recent Scripts | Demo adapter | Demo |
-| Pending Reviews | Demo adapter | Demo |
 | Activity | Demo adapter | Demo |
 
 Greeting shows **Mixed live + demo** while non-project modules remain mocked.
@@ -35,5 +35,4 @@ Components never hard-code demo numbers. Live project rows link to
 
 - Aggregation API for remaining metrics
 - Publishing tracker for daily goal
-- Approvals inbox for pending reviews
 - Audit feed (`audit.view`) for activity — restricted empty state when missing

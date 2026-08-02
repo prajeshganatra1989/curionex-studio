@@ -5,9 +5,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import func, select, text
+from sqlalchemy import func, or_, select, text
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.audit.actions import (
     ACTION_APPROVAL_APPROVED,
@@ -23,6 +23,7 @@ from app.content_versions.constants import (
     APPROVAL_STATUS_CANCELLED,
     APPROVAL_STATUS_PENDING,
     APPROVAL_STATUS_REJECTED,
+    APPROVAL_STATUSES,
     DEFAULT_VERSION_STATUS,
     VERSION_STATUS_APPROVED,
     VERSION_STATUS_ARCHIVED,
@@ -33,6 +34,7 @@ from app.content_versions.constants import (
 )
 from app.models.content_version import Approval, ContentVersion
 from app.models.project import Project
+from app.models.script import Script
 from app.models.user import User
 from app.schemas.content_version import (
     ApprovalRequestCreate,
@@ -113,6 +115,22 @@ def get_content_version_for_user(
     return version
 
 
+def _resolve_script_for_project(
+    db: Session,
+    project_id: UUID,
+    script_id: UUID | None,
+) -> UUID | None:
+    """Validate optional script_id belongs to the same project."""
+    if script_id is None:
+        return None
+    script = db.get(Script, script_id)
+    if script is None:
+        raise ValidationError("Script not found.")
+    if script.project_id != project_id:
+        raise ValidationError("Script must belong to the same project.")
+    return script.id
+
+
 def create_content_version(
     db: Session,
     project_id: UUID,
@@ -122,11 +140,18 @@ def create_content_version(
     ip_address: str | None = None,
     user_agent: str | None = None,
     commit: bool = True,
+    script_id: UUID | None = None,
 ) -> ContentVersion:
     assert_project_access(db, project_id, creator)
+    resolved_script_id = _resolve_script_for_project(
+        db,
+        project_id,
+        script_id if script_id is not None else payload.script_id,
+    )
     version_number = allocate_next_version_number(db, project_id)
     version = ContentVersion(
         project_id=project_id,
+        script_id=resolved_script_id,
         version_number=version_number,
         status=DEFAULT_VERSION_STATUS,
         title=payload.title,
@@ -144,6 +169,7 @@ def create_content_version(
             entity_id=version.id,
             metadata={
                 "project_id": str(project_id),
+                "script_id": str(resolved_script_id) if resolved_script_id else None,
                 "version_number": version.version_number,
             },
             ip_address=ip_address,
@@ -173,10 +199,15 @@ def create_version_from_existing(
     return create_content_version(
         db,
         source.project_id,
-        ContentVersionCreate(title=source.title, content=source.content),
+        ContentVersionCreate(
+            title=source.title,
+            content=source.content,
+            script_id=source.script_id,
+        ),
         creator=creator,
         ip_address=ip_address,
         user_agent=user_agent,
+        script_id=source.script_id,
     )
 
 
@@ -253,6 +284,165 @@ def get_latest_approved_version(
     if version is None:
         raise NotFoundError("No approved content version found for this project.")
     return version
+
+
+def list_script_content_versions(
+    db: Session,
+    script_id: UUID,
+    *,
+    user: User,
+    page: int = 1,
+    page_size: int = 20,
+    status: str | None = None,
+) -> tuple[list[ContentVersion], int]:
+    script = db.get(Script, script_id)
+    if script is None:
+        raise NotFoundError("Script not found.")
+    assert_project_access(db, script.project_id, user)
+    page = max(page, 1)
+    page_size = min(max(page_size, 1), 100)
+
+    filters = [ContentVersion.script_id == script_id]
+    if status is not None:
+        cleaned = status.strip().lower()
+        if cleaned not in VERSION_STATUSES:
+            raise ValidationError("Invalid status filter.")
+        filters.append(ContentVersion.status == cleaned)
+
+    count_stmt = select(func.count()).select_from(ContentVersion)
+    list_stmt = select(ContentVersion).order_by(
+        ContentVersion.version_number.desc(),
+        ContentVersion.id.asc(),
+    )
+    for condition in filters:
+        count_stmt = count_stmt.where(condition)
+        list_stmt = list_stmt.where(condition)
+
+    total = int(db.scalar(count_stmt) or 0)
+    items = list(
+        db.scalars(list_stmt.offset((page - 1) * page_size).limit(page_size)).all()
+    )
+    return items, total
+
+
+def get_script_latest_version(
+    db: Session,
+    script_id: UUID,
+    *,
+    user: User,
+) -> ContentVersion:
+    script = db.get(Script, script_id)
+    if script is None:
+        raise NotFoundError("Script not found.")
+    assert_project_access(db, script.project_id, user)
+    version = db.scalar(
+        select(ContentVersion)
+        .where(ContentVersion.script_id == script_id)
+        .order_by(ContentVersion.version_number.desc())
+        .limit(1)
+    )
+    if version is None:
+        raise NotFoundError("No content versions found for this script.")
+    return version
+
+
+def get_script_approved_version(
+    db: Session,
+    script_id: UUID,
+    *,
+    user: User,
+) -> ContentVersion:
+    script = db.get(Script, script_id)
+    if script is None:
+        raise NotFoundError("Script not found.")
+    assert_project_access(db, script.project_id, user)
+    version = db.scalar(
+        select(ContentVersion)
+        .where(
+            ContentVersion.script_id == script_id,
+            ContentVersion.status == VERSION_STATUS_APPROVED,
+        )
+        .order_by(ContentVersion.version_number.desc())
+        .limit(1)
+    )
+    if version is None:
+        raise NotFoundError("No approved content version found for this script.")
+    return version
+
+
+def list_approvals(
+    db: Session,
+    *,
+    user: User,
+    page: int = 1,
+    page_size: int = 20,
+    status: str | None = None,
+    project_id: UUID | None = None,
+    search: str | None = None,
+) -> tuple[list[Approval], int]:
+    """List approvals for projects the user can access."""
+    from app.models.project import Project as ProjectModel
+    from app.models.project import ProjectMember
+
+    page = max(page, 1)
+    page_size = min(max(page_size, 1), 100)
+
+    member_project_ids = select(ProjectMember.project_id).where(
+        ProjectMember.user_id == user.id
+    )
+
+    filters = [ContentVersion.project_id.in_(member_project_ids)]
+    if project_id is not None:
+        assert_project_access(db, project_id, user)
+        filters.append(ContentVersion.project_id == project_id)
+    if status is not None:
+        cleaned = status.strip().lower()
+        if cleaned not in APPROVAL_STATUSES:
+            raise ValidationError("Invalid approval status filter.")
+        filters.append(Approval.status == cleaned)
+    if search:
+        term = f"%{search.strip()}%"
+        filters.append(
+            or_(
+                ProjectModel.project_code.ilike(term),
+                Script.script_code.ilike(term),
+                Script.title.ilike(term),
+                ContentVersion.title.ilike(term),
+            )
+        )
+
+    base = (
+        select(Approval)
+        .join(ContentVersion, Approval.content_version_id == ContentVersion.id)
+        .join(ProjectModel, ContentVersion.project_id == ProjectModel.id)
+        .outerjoin(Script, ContentVersion.script_id == Script.id)
+    )
+    count_base = (
+        select(func.count())
+        .select_from(Approval)
+        .join(ContentVersion, Approval.content_version_id == ContentVersion.id)
+        .join(ProjectModel, ContentVersion.project_id == ProjectModel.id)
+        .outerjoin(Script, ContentVersion.script_id == Script.id)
+    )
+    for condition in filters:
+        base = base.where(condition)
+        count_base = count_base.where(condition)
+
+    total = int(db.scalar(count_base) or 0)
+    items = list(
+        db.scalars(
+            base.options(
+                joinedload(Approval.requester),
+                joinedload(Approval.reviewer),
+                joinedload(Approval.content_version).joinedload(ContentVersion.project),
+                joinedload(Approval.content_version).joinedload(ContentVersion.script),
+            )
+            .order_by(Approval.created_at.desc(), Approval.id.asc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        ).unique().all()
+    )
+    return items, total
 
 
 def list_approvals_for_version(
@@ -438,6 +628,8 @@ def reject_approval(
     ip_address: str | None = None,
     user_agent: str | None = None,
 ) -> Approval:
+    if not payload.comment or not payload.comment.strip():
+        raise ValidationError("A rejection reason is required.")
     return _review_approval(
         db,
         approval_id,

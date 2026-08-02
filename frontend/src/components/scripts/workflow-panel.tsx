@@ -4,6 +4,7 @@ import { memo } from "react";
 
 import { StatusBadge } from "@/components/ui/status-badge";
 import type { WorkflowApprovalSummary, WorkflowStatus } from "@/lib/api/types";
+import { useApproval } from "@/lib/reviews/hooks";
 
 type WorkflowPanelProps = {
   workflow: WorkflowStatus | undefined;
@@ -48,6 +49,11 @@ export const WorkflowPanel = memo(function WorkflowPanel({
   error,
   onRetry,
 }: WorkflowPanelProps) {
+  const rejectedApprovalId =
+    latestApproval?.status === "rejected" ? latestApproval.id : null;
+  const approvalQuery = useApproval(rejectedApprovalId);
+  const rejectionComment = approvalQuery.data?.comment?.trim() || null;
+
   if (loading) {
     return (
       <p className="text-sm text-muted-foreground" data-testid="workflow-loading">
@@ -111,6 +117,14 @@ export const WorkflowPanel = memo(function WorkflowPanel({
             Update Script Documents, then create a new version. Approval comments
             are not copied into documents.
           </p>
+          {rejectionComment ? (
+            <blockquote
+              className="mt-2 rounded-md border border-border/60 bg-background/60 px-2 py-1.5 text-xs text-foreground"
+              data-testid="rejection-comment"
+            >
+              {rejectionComment}
+            </blockquote>
+          ) : null}
         </div>
       ) : null}
 
@@ -134,8 +148,8 @@ export const WorkflowPanel = memo(function WorkflowPanel({
         >
           <p className="font-medium text-foreground">Pending review</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Approval {workflow.pending_approval.status}. Full review decisions
-            arrive in the next sprint.
+            Approval {workflow.pending_approval.status}. Open the review inbox
+            to approve or reject.
           </p>
         </div>
       ) : null}

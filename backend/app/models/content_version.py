@@ -27,14 +27,18 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.project import Project
+    from app.models.script import Script
     from app.models.user import User
 
 
 class ContentVersion(Base):
     """Immutable content snapshot for a project.
 
-    After insert, title/content/version_number/project_id/created_by must never
-    change. Edits require creating a new ContentVersion row.
+    After insert, title/content/version_number/project_id/script_id/created_by
+    must never change. Edits require creating a new ContentVersion row.
+
+    ``script_id`` is nullable for legacy project-only versions. Workflow-created
+    versions always set ``script_id``.
     """
 
     __tablename__ = "content_versions"
@@ -57,6 +61,12 @@ class ContentVersion(Base):
         ForeignKey("projects.id", ondelete="RESTRICT"),
         nullable=False,
     )
+    script_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("scripts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     version_number: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(
         String(32),
@@ -78,6 +88,7 @@ class ContentVersion(Base):
     )
 
     project: Mapped[Project] = relationship()
+    script: Mapped[Script | None] = relationship(foreign_keys=[script_id])
     creator: Mapped[User] = relationship(foreign_keys=[created_by])
     approvals: Mapped[list[Approval]] = relationship(
         back_populates="content_version",

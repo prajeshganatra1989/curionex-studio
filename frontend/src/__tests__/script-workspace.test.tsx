@@ -26,7 +26,8 @@ const createWorkflowVersion = vi.fn();
 const submitWorkflowReview = vi.fn();
 const getKnowledgePack = vi.fn();
 const listProjectKnowledgePacks = vi.fn();
-const listProjectContentVersions = vi.fn();
+const listScriptContentVersions = vi.fn();
+const getApprovalDetail = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ projectId: "proj-1", scriptId: "sc-1" }),
@@ -65,8 +66,18 @@ vi.mock("@/lib/api/projects", async () => {
     getKnowledgePack: (...args: unknown[]) => getKnowledgePack(...args),
     listProjectKnowledgePacks: (...args: unknown[]) =>
       listProjectKnowledgePacks(...args),
-    listProjectContentVersions: (...args: unknown[]) =>
-      listProjectContentVersions(...args),
+  };
+});
+
+vi.mock("@/lib/api/approvals", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/api/approvals")>(
+    "@/lib/api/approvals",
+  );
+  return {
+    ...actual,
+    listScriptContentVersions: (...args: unknown[]) =>
+      listScriptContentVersions(...args),
+    getApprovalDetail: (...args: unknown[]) => getApprovalDetail(...args),
   };
 });
 
@@ -192,7 +203,8 @@ describe("ScriptWorkspace", () => {
     submitWorkflowReview.mockReset();
     getKnowledgePack.mockReset();
     listProjectKnowledgePacks.mockReset();
-    listProjectContentVersions.mockReset();
+    listScriptContentVersions.mockReset();
+    getApprovalDetail.mockReset();
 
     getProject.mockResolvedValue(project);
     getScript.mockResolvedValue(makeScript());
@@ -228,11 +240,49 @@ describe("ScriptWorkspace", () => {
       page_size: 50,
       total: 1,
     });
-    listProjectContentVersions.mockResolvedValue({
+    listScriptContentVersions.mockResolvedValue({
       items: [],
       page: 1,
       page_size: 100,
       total: 0,
+    });
+    getApprovalDetail.mockResolvedValue({
+      id: "ap-1",
+      status: "rejected",
+      comment: "Rewrite the ending",
+      created_at: "",
+      reviewed_at: "",
+      requested_by: {
+        id: "u1",
+        email: "owner@example.com",
+        first_name: "Owner",
+        last_name: "User",
+      },
+      reviewed_by: null,
+      content_version: {
+        id: "v1",
+        project_id: "proj-1",
+        script_id: "sc-1",
+        version_number: 1,
+        status: "rejected",
+        title: "v1",
+        content: "",
+        created_by: "u1",
+        created_at: "",
+      },
+      project: {
+        id: "proj-1",
+        project_code: "CRX-0042",
+        name: "Cosmic Mysteries",
+      },
+      script: {
+        id: "sc-1",
+        script_code: "CRX-0042-S01",
+        title: "Neutron Stars",
+        project_id: "proj-1",
+        knowledge_pack_id: "kp-1",
+      },
+      version_approvals: [],
     });
     class IO {
       observe() {}
@@ -498,6 +548,9 @@ describe("ScriptWorkspace", () => {
     });
     wrap(<ScriptWorkspace />);
     expect(await screen.findByTestId("revisions-banner")).toBeInTheDocument();
+    expect(await screen.findByTestId("rejection-comment")).toHaveTextContent(
+      "Rewrite the ending",
+    );
     expect(screen.getByTestId("workflow-action")).toHaveAttribute(
       "data-action",
       "revisions_requested",

@@ -70,3 +70,10 @@ Master Script words ÷ configurable WPM (default **150**) → seconds. Displayed
 | Alt + 3 | Master Script |
 
 All actions remain available without shortcuts.
+
+## Version history
+
+Script-scoped version list via `GET /scripts/{scriptId}/content-versions`. See [011-version-history-ui.md](./011-version-history-ui.md).
+
+- **Open Version** navigates to the read-only version page
+- **Open Review** when an approval id is available for that version

@@ -1,38 +1,61 @@
 "use client";
 
-import { memo, useState } from "react";
+import Link from "next/link";
+import { memo, useMemo } from "react";
 
-import { Button } from "@/components/ui/button";
-import { Modal } from "@/components/ui/modal";
 import { StatusBadge } from "@/components/ui/status-badge";
-import type { ContentVersionSummary, WorkflowStatus } from "@/lib/api/types";
-import { useContentVersion, useScriptVersions } from "@/lib/scripts/hooks";
+import type {
+  WorkflowApprovalSummary,
+  WorkflowStatus,
+} from "@/lib/api/types";
+import { useScriptVersions } from "@/lib/scripts/hooks";
 import { formatRelativeTime } from "@/lib/utils";
 
 type VersionHistoryPanelProps = {
   projectId: string;
-  scriptCode: string;
+  scriptId: string;
   workflow?: WorkflowStatus;
+  latestApproval?: WorkflowApprovalSummary | null;
 };
+
+function approvalIdForVersion(
+  versionId: string,
+  workflow?: WorkflowStatus,
+  latestApproval?: WorkflowApprovalSummary | null,
+): string | null {
+  if (workflow?.pending_approval?.content_version_id === versionId) {
+    return workflow.pending_approval.id;
+  }
+  if (latestApproval?.content_version_id === versionId) {
+    return latestApproval.id;
+  }
+  return null;
+}
 
 export const VersionHistoryPanel = memo(function VersionHistoryPanel({
   projectId,
-  scriptCode,
+  scriptId,
   workflow,
+  latestApproval,
 }: VersionHistoryPanelProps) {
-  const versionsQuery = useScriptVersions(projectId, scriptCode);
-  const [openId, setOpenId] = useState<string | null>(null);
-  const detailQuery = useContentVersion(openId);
+  const versionsQuery = useScriptVersions(scriptId);
 
-  const items = versionsQuery.data?.items ?? [];
+  const items = useMemo(
+    () => versionsQuery.data?.items ?? [],
+    [versionsQuery.data?.items],
+  );
 
-  function roleFor(version: ContentVersionSummary): string[] {
-    const roles: string[] = [];
-    if (workflow?.latest_version?.id === version.id) roles.push("Latest");
-    if (workflow?.active_version?.id === version.id) roles.push("Active");
-    if (workflow?.approved_version?.id === version.id) roles.push("Approved");
-    return roles;
-  }
+  const roleMap = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const version of items) {
+      const roles: string[] = [];
+      if (workflow?.latest_version?.id === version.id) roles.push("Latest");
+      if (workflow?.active_version?.id === version.id) roles.push("Active");
+      if (workflow?.approved_version?.id === version.id) roles.push("Approved");
+      map.set(version.id, roles);
+    }
+    return map;
+  }, [items, workflow]);
 
   return (
     <aside
@@ -55,7 +78,13 @@ export const VersionHistoryPanel = memo(function VersionHistoryPanel({
 
       <ul className="space-y-2">
         {items.map((version) => {
-          const roles = roleFor(version);
+          const roles = roleMap.get(version.id) ?? [];
+          const approvalId = approvalIdForVersion(
+            version.id,
+            workflow,
+            latestApproval,
+          );
+          const versionHref = `/projects/${projectId}/scripts/${scriptId}/versions/${version.id}`;
           return (
             <li
               key={version.id}
@@ -78,39 +107,26 @@ export const VersionHistoryPanel = memo(function VersionHistoryPanel({
               <p className="mt-1 text-xs text-muted-foreground">
                 {formatRelativeTime(version.created_at)}
               </p>
-              <Button
-                type="button"
-                variant="ghost"
-                className="mt-1 h-8 px-2"
-                onClick={() => setOpenId(version.id)}
-              >
-                Open Version
-              </Button>
+              <div className="mt-1 flex flex-wrap gap-1">
+                <Link
+                  href={versionHref}
+                  className="inline-flex h-8 items-center rounded-lg px-2 text-sm text-muted-foreground hover:bg-surface-hover hover:text-foreground"
+                >
+                  Open Version
+                </Link>
+                {approvalId ? (
+                  <Link
+                    href={`/reviews/${approvalId}`}
+                    className="inline-flex h-8 items-center rounded-lg px-2 text-sm text-muted-foreground hover:bg-surface-hover hover:text-foreground"
+                  >
+                    Open Review
+                  </Link>
+                ) : null}
+              </div>
             </li>
           );
         })}
       </ul>
-
-      <Modal
-        open={Boolean(openId)}
-        onClose={() => setOpenId(null)}
-        title={
-          detailQuery.data
-            ? `Version ${detailQuery.data.version_number}`
-            : "Version"
-        }
-        description="Content versions are immutable snapshots."
-        size="lg"
-      >
-        {detailQuery.isLoading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
-        ) : null}
-        {detailQuery.data ? (
-          <pre className="max-h-[50vh] overflow-auto whitespace-pre-wrap rounded-lg border border-border bg-background p-3 text-xs text-muted-foreground">
-            {detailQuery.data.content}
-          </pre>
-        ) : null}
-      </Modal>
     </aside>
   );
 });

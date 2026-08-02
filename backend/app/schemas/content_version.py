@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 class ContentVersionCreate(BaseModel):
     title: str = Field(min_length=1, max_length=300)
     content: str = Field(min_length=0, max_length=500000)
+    script_id: UUID | None = None
 
     @field_validator("title")
     @classmethod
@@ -33,6 +34,7 @@ class ContentVersionResponse(BaseModel):
 
     id: UUID
     project_id: UUID
+    script_id: UUID | None = None
     version_number: int
     status: str
     title: str
@@ -46,6 +48,21 @@ class ContentVersionListResponse(BaseModel):
     page: int
     page_size: int
     total: int
+
+
+class ContentVersionSummary(BaseModel):
+    """Version row without full snapshot content (list/inbox)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    project_id: UUID
+    script_id: UUID | None = None
+    version_number: int
+    status: str
+    title: str
+    created_by: UUID
+    created_at: datetime
 
 
 class ApprovalRequestCreate(BaseModel):
@@ -83,3 +100,58 @@ class ApprovalResponse(BaseModel):
     comment: str | None
     created_at: datetime
     reviewed_at: datetime | None
+
+
+class UserBrief(BaseModel):
+    id: UUID
+    email: str
+    first_name: str
+    last_name: str
+
+
+class ProjectBrief(BaseModel):
+    id: UUID
+    project_code: str
+    name: str
+
+
+class ScriptBrief(BaseModel):
+    id: UUID
+    script_code: str
+    title: str
+    project_id: UUID
+    knowledge_pack_id: UUID | None = None
+
+
+class ApprovalListItem(BaseModel):
+    id: UUID
+    status: str
+    comment: str | None
+    created_at: datetime
+    reviewed_at: datetime | None
+    requested_by: UserBrief
+    reviewed_by: UserBrief | None
+    content_version: ContentVersionSummary
+    project: ProjectBrief
+    script: ScriptBrief | None = None
+
+
+class ApprovalListResponse(BaseModel):
+    items: list[ApprovalListItem]
+    page: int
+    page_size: int
+    total: int
+
+
+class ApprovalDetailResponse(BaseModel):
+    id: UUID
+    status: str
+    comment: str | None
+    created_at: datetime
+    reviewed_at: datetime | None
+    requested_by: UserBrief
+    reviewed_by: UserBrief | None
+    content_version: ContentVersionResponse
+    project: ProjectBrief
+    script: ScriptBrief | None = None
+    version_approvals: list[ApprovalResponse] = Field(default_factory=list)

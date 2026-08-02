@@ -198,12 +198,107 @@ export type ScriptDocumentUpdateInput = {
 export type ContentVersionSummary = {
   id: string;
   project_id: string;
+  script_id: string | null;
   version_number: number;
   status: string;
   title: string;
   content: string;
   created_by: string;
   created_at: string;
+};
+
+/** Version row without snapshot body (approval inbox / lists). */
+export type ContentVersionBrief = {
+  id: string;
+  project_id: string;
+  script_id: string | null;
+  version_number: number;
+  status: string;
+  title: string;
+  created_by: string;
+  created_at: string;
+};
+
+export type UserBrief = {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+};
+
+export type ProjectBrief = {
+  id: string;
+  project_code: string;
+  name: string;
+};
+
+export type ScriptBrief = {
+  id: string;
+  script_code: string;
+  title: string;
+  project_id: string;
+  knowledge_pack_id: string | null;
+};
+
+export type ApprovalSummary = {
+  id: string;
+  status: string;
+  comment: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+  requested_by: UserBrief;
+  reviewed_by: UserBrief | null;
+  content_version: ContentVersionBrief;
+  project: ProjectBrief;
+  script: ScriptBrief | null;
+};
+
+export type ApprovalListResponse = {
+  items: ApprovalSummary[];
+  page: number;
+  page_size: number;
+  total: number;
+};
+
+export type ApprovalListParams = {
+  page?: number;
+  page_size?: number;
+  status?: string;
+  project_id?: string;
+  search?: string;
+};
+
+export type ApprovalRecord = {
+  id: string;
+  content_version_id: string;
+  requested_by: string;
+  reviewed_by: string | null;
+  status: string;
+  comment: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+};
+
+export type ApprovalDetail = {
+  id: string;
+  status: string;
+  comment: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+  requested_by: UserBrief;
+  reviewed_by: UserBrief | null;
+  content_version: ContentVersionSummary;
+  project: ProjectBrief;
+  script: ScriptBrief | null;
+  version_approvals: ApprovalRecord[];
+};
+
+export type ApprovalActionInput = {
+  comment?: string | null;
+};
+
+export type ApprovalRejectInput = {
+  comment: string;
 };
 
 export type ContentVersionListResponse = {
