@@ -35,6 +35,10 @@ Stable permission codes used by Curionex Studio authorization.
 | `audit.view` | View audit logs |
 | `settings.view` | View settings |
 | `settings.update` | Update settings |
+| `ai.view` | View AI foundation |
+| `ai.manage` | Manage AI settings |
+| `ai.generate` | Queue AI jobs |
+| `prompt.manage` | Manage prompts |
 
 Not every code has an implemented feature endpoint yet. Codes are reserved so future milestones can authorize consistently.
 
