@@ -2,9 +2,9 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactElement, ReactNode } from "react";
 
 import { ProductionPackagePage } from "@/components/scripts/production-package-page";
-import { AuthProvider } from "@/lib/auth/auth-context";
 
 const pushMock = vi.fn();
 vi.mock("next/navigation", () => ({
@@ -32,27 +32,21 @@ vi.mock("@/lib/api/projects", async () => {
   };
 });
 
-vi.mock("@/lib/auth/auth-context", async () => {
-  const React = await import("react");
-  const api = {};
-  return {
-    AuthProvider: ({ children }: { children: React.ReactNode }) => children,
-    useAuth: () => ({
-      api,
-      status: "authenticated",
-      user: { id: "u1", email: "owner@example.com" },
-    }),
-  };
-});
+vi.mock("@/lib/auth/auth-context", () => ({
+  AuthProvider: ({ children }: { children: ReactNode }) => children,
+  useAuth: () => ({
+    api: {},
+    status: "authenticated",
+    user: { id: "u1", email: "owner@example.com" },
+  }),
+}));
 
-function wrap(ui: React.ReactElement) {
+function wrap(ui: ReactElement) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
-    <QueryClientProvider client={client}>
-      <AuthProvider>{ui}</AuthProvider>
-    </QueryClientProvider>,
+    <QueryClientProvider client={client}>{ui}</QueryClientProvider>,
   );
 }
 

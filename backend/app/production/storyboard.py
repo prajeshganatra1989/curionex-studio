@@ -146,7 +146,6 @@ def build_storyboard_scenes(
         return []
 
     words_per_scene = [max(1, count_words(c)) for c in chunks]
-    total_words = sum(words_per_scene)
     # Scale durations to land near 60s while keeping 3–6s when possible
     raw_seconds = [(w / wpm) * 60.0 for w in words_per_scene]
     total_raw = sum(raw_seconds) or 1.0

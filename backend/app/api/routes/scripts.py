@@ -12,6 +12,10 @@ from app.audit.context import extract_request_audit_context
 from app.db.session import get_db
 from app.models.script import Script
 from app.models.user import User
+from app.production.package_schemas import (
+    ProductionPackageEligibilityResponse,
+    ProductionPackageResponse,
+)
 from app.schemas.ai import (
     AiGenerationListResponse,
     AiGenerationResponse,
@@ -32,10 +36,6 @@ from app.schemas.script import (
     ScriptListResponse,
     ScriptResponse,
     ScriptUpdate,
-)
-from app.production.package_schemas import (
-    ProductionPackageEligibilityResponse,
-    ProductionPackageResponse,
 )
 from app.services import (
     production_package_service,
