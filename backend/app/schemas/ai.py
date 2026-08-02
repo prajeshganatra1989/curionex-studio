@@ -406,3 +406,44 @@ class ScriptAiPrerequisitesResponse(BaseModel):
     document_type: str
     ready: bool
     missing: list[str] = Field(default_factory=list)
+
+
+class ScriptQualityReviewCreate(BaseModel):
+    model_id: UUID | None = None
+    language: str = Field(default="English", max_length=64)
+    target_duration_seconds: int | None = Field(default=None, ge=15, le=300)
+    target_words_per_minute: int | None = Field(default=None, ge=80, le=220)
+    idempotency_key: str | None = Field(default=None, max_length=128)
+
+    @field_validator("language")
+    @classmethod
+    def strip_language(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("idempotency_key")
+    @classmethod
+    def strip_key(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
+
+
+class ScriptQualitySuggestionApply(BaseModel):
+    strategy: str = Field(default="replace_excerpt")
+
+    @field_validator("strategy")
+    @classmethod
+    def validate_strategy(cls, value: str) -> str:
+        cleaned = value.strip()
+        if cleaned != "replace_excerpt":
+            raise ValueError("strategy must be replace_excerpt")
+        return cleaned
+
+
+class ScriptQualitySuggestionApplyResponse(BaseModel):
+    document: dict[str, Any]
+    generation_id: UUID
+    issue_id: str
+    strategy: str
+    stale_input: bool

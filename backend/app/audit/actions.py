@@ -64,6 +64,11 @@ ACTION_SCRIPT_AI_DRAFT_COMPLETED = "script.ai_draft_completed"
 ACTION_SCRIPT_AI_DRAFT_FAILED = "script.ai_draft_failed"
 ACTION_SCRIPT_AI_DRAFT_APPLIED = "script.ai_draft_applied"
 
+ACTION_SCRIPT_QUALITY_REVIEW_REQUESTED = "script.quality_review_requested"
+ACTION_SCRIPT_QUALITY_REVIEW_COMPLETED = "script.quality_review_completed"
+ACTION_SCRIPT_QUALITY_REVIEW_FAILED = "script.quality_review_failed"
+ACTION_SCRIPT_QUALITY_SUGGESTION_APPLIED = "script.quality_suggestion_applied"
+
 ENTITY_WORKFLOW = "workflow"
 
 ACTION_WORKFLOW_CREATED = "workflow.created"

@@ -24,6 +24,7 @@ type ScriptHeaderProps = {
   workflowAction: { kind: WorkflowActionKind; label: string };
   workflowLoading?: boolean;
   onSave: () => void;
+  onReviewQuality?: () => void;
   onCreateVersion: () => void;
   onWorkflowAction: (kind: WorkflowActionKind) => void;
   onOpenNav: () => void;
@@ -41,6 +42,7 @@ export function ScriptHeader({
   workflowAction,
   workflowLoading,
   onSave,
+  onReviewQuality,
   onCreateVersion,
   onWorkflowAction,
   onOpenNav,
@@ -117,6 +119,18 @@ export function ScriptHeader({
               <Save className="h-4 w-4" />
               Save Changes
             </Button>
+            {onReviewQuality ? (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={onReviewQuality}
+                disabled={saving}
+                aria-label="Review script quality"
+                data-testid="script-header-review-quality"
+              >
+                Review Script Quality
+              </Button>
+            ) : null}
             <Button
               type="button"
               variant="secondary"

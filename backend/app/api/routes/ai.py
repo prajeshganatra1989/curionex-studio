@@ -48,7 +48,18 @@ def _map_error(exc: Exception) -> HTTPException:
     if isinstance(exc, ai_service.ConflictError):
         return HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
     from app.ai.credentials import CredentialEncryptionError
+    from app.services import script_quality_service, script_service
 
+    if isinstance(
+        exc,
+        (script_quality_service.NotFoundError, script_service.NotFoundError),
+    ):
+        return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    if isinstance(
+        exc,
+        (script_quality_service.ForbiddenError, script_service.ForbiddenError),
+    ):
+        return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
     if isinstance(exc, CredentialEncryptionError):
         return HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -139,13 +150,17 @@ def _job_response(job: AiJob, db: Session | None = None) -> AiJobResponse:
 
 def _generation_response(item, db: Session | None = None) -> AiGenerationResponse:
     stale_input = None
-    if db is not None and getattr(item, "script_id", None) and getattr(
-        item, "document_type", None
-    ):
-        from app.services import script_ai_service
-
+    if db is not None and getattr(item, "script_id", None):
+        purpose = getattr(item, "purpose", None)
         try:
-            stale_input = script_ai_service.is_generation_stale(db, item)
+            if purpose == "script.quality_review":
+                from app.services import script_quality_service
+
+                stale_input = script_quality_service.is_generation_stale(db, item)
+            elif getattr(item, "document_type", None):
+                from app.services import script_ai_service
+
+                stale_input = script_ai_service.is_generation_stale(db, item)
         except Exception:  # noqa: BLE001 — listing must not fail on stale check
             stale_input = None
     return AiGenerationResponse(
@@ -602,6 +617,26 @@ def get_generation(
     try:
         item = ai_service.get_generation(db, generation_id)
     except ai_service.NotFoundError as exc:
+        raise _map_error(exc) from None
+    return _generation_response(item, db)
+
+
+@router.get("/quality-reviews/{generation_id}", response_model=AiGenerationResponse)
+def get_quality_review(
+    generation_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_permission("ai.view"))],
+) -> AiGenerationResponse:
+    from app.services import script_quality_service
+
+    try:
+        item = script_quality_service.get_quality_review(
+            db, generation_id, actor=current_user
+        )
+    except (
+        script_quality_service.NotFoundError,
+        script_quality_service.ForbiddenError,
+    ) as exc:
         raise _map_error(exc) from None
     return _generation_response(item, db)
 

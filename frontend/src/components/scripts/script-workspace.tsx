@@ -14,12 +14,14 @@ import {
 import { SectionDrawer } from "@/components/knowledge-packs/section-drawer";
 import { GenerateScriptAiDraftDialog } from "@/components/scripts/generate-script-ai-draft-dialog";
 import { KnowledgePackContextPanel } from "@/components/scripts/knowledge-pack-context-panel";
+import { ReviewScriptQualityDialog } from "@/components/scripts/review-script-quality-dialog";
 import { ScriptAiDraftReviewPanel } from "@/components/scripts/script-ai-draft-review-panel";
 import { ScriptAiPipelinePanel } from "@/components/scripts/script-ai-pipeline-panel";
 import { ScriptDocumentEditor } from "@/components/scripts/script-document-editor";
 import { ScriptDocumentNavigator } from "@/components/scripts/script-document-navigator";
 import { ScriptHeader } from "@/components/scripts/script-header";
 import { ScriptProgressPanel } from "@/components/scripts/script-progress-panel";
+import { ScriptQualityPanel } from "@/components/scripts/script-quality-panel";
 import { UnsavedChangesDialog } from "@/components/scripts/unsaved-changes-dialog";
 import { VersionHistoryPanel } from "@/components/scripts/version-history-panel";
 import { WorkflowPanel } from "@/components/scripts/workflow-panel";
@@ -34,6 +36,7 @@ import { Field, TextArea, TextInput, TextSelect } from "@/components/ui/field";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
+import { aiKeys } from "@/lib/ai/hooks";
 import type { ScriptAiDocumentType } from "@/lib/ai/types";
 import { ApiError } from "@/lib/api/client";
 import { updateScriptDocument } from "@/lib/api/projects";
@@ -52,6 +55,7 @@ import {
   scriptKeys,
 } from "@/lib/scripts/hooks";
 import { isDocumentComplete } from "@/lib/scripts/metrics";
+import { qualityReviewHref } from "@/lib/scripts/quality";
 import { formatRelativeTime } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -130,6 +134,7 @@ export function ScriptWorkspace() {
   >(null);
   const [aiReviewDocumentType, setAiReviewDocumentType] =
     useState<ScriptAiDocumentType | null>(null);
+  const [qualityReviewOpen, setQualityReviewOpen] = useState(false);
 
   const packId = scriptQuery.data?.knowledge_pack_id ?? null;
   const packQuery = useKnowledgePack(packId ?? "");
@@ -293,6 +298,14 @@ export function ScriptWorkspace() {
     if (!documentType) return;
     setAiReviewDocumentType(documentType);
     setAiReviewGenerationId(generationId);
+  }
+
+  function handleQualityReviewReady(generationId: string) {
+    setQualityReviewOpen(false);
+    void queryClient.invalidateQueries({
+      queryKey: aiKeys.scriptQualityReviews(scriptId),
+    });
+    router.push(qualityReviewHref(projectId, scriptId, generationId));
   }
 
   async function handleDraftApplied({
@@ -589,6 +602,7 @@ export function ScriptWorkspace() {
   const project = projectQuery.data;
   const archived = script.status === "archived";
   const readOnly = archived;
+  const hasMasterScript = (drafts.master_script ?? "").trim().length > 0;
 
   return (
     <WorkspaceShell>
@@ -603,6 +617,11 @@ export function ScriptWorkspace() {
         workflowAction={workflowAction}
         workflowLoading={createVersion.isPending || submitReview.isPending}
         onSave={() => void saveDocuments(dirtyKeys)}
+        onReviewQuality={
+          readOnly || !hasMasterScript
+            ? undefined
+            : () => setQualityReviewOpen(true)
+        }
         onCreateVersion={() => setConfirmVersion(true)}
         onWorkflowAction={(kind) => void onWorkflowAction(kind)}
         onOpenNav={() => setDrawerOpen(true)}
@@ -699,6 +718,13 @@ export function ScriptWorkspace() {
                 onFocusDocument={focusDocument}
               />
             ) : null}
+            <ScriptQualityPanel
+              projectId={projectId}
+              scriptId={scriptId}
+              hasMasterScript={hasMasterScript}
+              readOnly={readOnly}
+              onReview={() => setQualityReviewOpen(true)}
+            />
             <ScriptProgressPanel contents={drafts} />
             <WorkflowPanel
               workflow={workflowQuery.data}
@@ -760,6 +786,16 @@ export function ScriptWorkspace() {
                   }}
                 />
               ) : null}
+              <ScriptQualityPanel
+                projectId={projectId}
+                scriptId={scriptId}
+                hasMasterScript={hasMasterScript}
+                readOnly={readOnly}
+                onReview={() => {
+                  setRightDrawer(null);
+                  setQualityReviewOpen(true);
+                }}
+              />
               <ScriptProgressPanel contents={drafts} />
               <WorkflowPanel
                 workflow={workflowQuery.data}
@@ -938,6 +974,16 @@ export function ScriptWorkspace() {
           onDraftReady={handleDraftReady}
         />
       ) : null}
+
+      <ReviewScriptQualityDialog
+        open={qualityReviewOpen}
+        onClose={() => setQualityReviewOpen(false)}
+        scriptId={scriptId}
+        scriptTitle={script.title}
+        isDirty={isDirty}
+        onSaveThenReview={ensureSaved}
+        onReviewReady={handleQualityReviewReady}
+      />
 
       <Modal
         open={Boolean(aiReviewGenerationId && aiReviewDocumentType)}

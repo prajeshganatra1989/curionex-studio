@@ -14,9 +14,18 @@ import { Pagination } from "@/components/ui/pagination";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useAiGeneration, useAiGenerations } from "@/lib/ai/hooks";
 import type { AiGeneration } from "@/lib/ai/types";
-import { SCRIPT_AI_DOCUMENT_TYPES } from "@/lib/ai/types";
+import {
+  SCRIPT_AI_DOCUMENT_TYPES,
+  SCRIPT_QUALITY_REVIEW_PURPOSE,
+} from "@/lib/ai/types";
 import { ApiError } from "@/lib/api/client";
 import { DOCUMENT_BY_TYPE } from "@/lib/scripts/documents";
+import {
+  isScriptQualityReviewPurpose,
+  parseScriptQualityReview,
+  qualityReviewHref,
+  recommendationLabel,
+} from "@/lib/scripts/quality";
 import { formatRelativeTime } from "@/lib/utils";
 
 function GenerationsSkeleton() {
@@ -45,6 +54,17 @@ function isScriptPurpose(purpose: string | null | undefined): boolean {
 }
 
 function draftLink(generation: AiGeneration): string | null {
+  if (
+    isScriptQualityReviewPurpose(generation.purpose) &&
+    generation.script_id &&
+    generation.project_id
+  ) {
+    return qualityReviewHref(
+      generation.project_id,
+      generation.script_id,
+      generation.id,
+    );
+  }
   if (generation.script_id && generation.project_id) {
     return `/projects/${generation.project_id}/scripts/${generation.script_id}`;
   }
@@ -53,8 +73,24 @@ function draftLink(generation: AiGeneration): string | null {
 }
 
 function draftLinkLabel(generation: AiGeneration): string {
+  if (isScriptQualityReviewPurpose(generation.purpose)) return "Open Review";
   if (generation.script_id) return "Open Script";
   return "Open Draft";
+}
+
+function qualitySummary(generation: AiGeneration): {
+  score: number;
+  band: string;
+  recommendation: string;
+} | null {
+  if (!isScriptQualityReviewPurpose(generation.purpose)) return null;
+  const review = parseScriptQualityReview(generation.structured_output);
+  if (!review) return null;
+  return {
+    score: review.overall_score,
+    band: review.quality_band_label,
+    recommendation: recommendationLabel(review.recommended_next_action),
+  };
 }
 
 function GenerationDetail({ generation }: { generation: AiGeneration }) {
@@ -74,8 +110,9 @@ function GenerationDetail({ generation }: { generation: AiGeneration }) {
           className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2.5 text-xs text-foreground"
           role="note"
         >
-          AI-generated content requires review and source verification before
-          publishing.
+          {isScriptQualityReviewPurpose(generation.purpose)
+            ? "Quality reviews are advisory only. AI never approves content."
+            : "AI-generated content requires review and source verification before publishing."}
         </div>
       ) : null}
 
@@ -128,6 +165,26 @@ function GenerationDetail({ generation }: { generation: AiGeneration }) {
             </dd>
           </div>
         ) : null}
+        {(() => {
+          const quality = qualitySummary(generation);
+          if (!quality) return null;
+          return (
+            <>
+              <div>
+                <dt className="text-muted-foreground">Quality score</dt>
+                <dd className="tabular-nums text-foreground">{quality.score}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Quality band</dt>
+                <dd className="text-foreground">{quality.band}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Advisory action</dt>
+                <dd className="text-foreground">{quality.recommendation}</dd>
+              </div>
+            </>
+          );
+        })()}
         <div>
           <dt className="text-muted-foreground">Tokens in</dt>
           <dd className="tabular-nums text-foreground">
@@ -181,9 +238,11 @@ function GenerationDetail({ generation }: { generation: AiGeneration }) {
           href={link}
           className="inline-flex text-sm font-medium text-brand-orange underline"
         >
-          {generation.script_id
-            ? "Open Script Workspace"
-            : "Open Draft in Knowledge Pack"}
+          {isScriptQualityReviewPurpose(generation.purpose)
+            ? "Open Full Review"
+            : generation.script_id
+              ? "Open Script Workspace"
+              : "Open Draft in Knowledge Pack"}
         </Link>
       ) : null}
 
@@ -351,6 +410,9 @@ export function GenerationsPage() {
             <option value="script.master_script.draft">
               script.master_script.draft
             </option>
+            <option value={SCRIPT_QUALITY_REVIEW_PURPOSE}>
+              Script Quality Review
+            </option>
           </TextSelect>
         </Field>
         <Field label="Applied" htmlFor="gen-filter-applied">
@@ -409,6 +471,7 @@ export function GenerationsPage() {
           >
             {items.map((item) => {
               const link = draftLink(item);
+              const quality = qualitySummary(item);
               return (
                 <li key={item.id}>
                   <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-4">
@@ -423,13 +486,34 @@ export function GenerationsPage() {
                         </p>
                         {item.purpose ? (
                           <span className="rounded-md border border-border bg-surface-hover px-1.5 py-0.5 text-[11px] text-muted-foreground">
-                            {item.purpose}
+                            {isScriptQualityReviewPurpose(item.purpose)
+                              ? "Script Quality Review"
+                              : item.purpose}
                           </span>
                         ) : null}
                         {item.document_type ? (
                           <span className="rounded-md border border-border bg-surface-hover px-1.5 py-0.5 text-[11px] text-muted-foreground">
                             {item.document_type}
                           </span>
+                        ) : null}
+                        {quality ? (
+                          <>
+                            <span
+                              className="rounded-md border border-border bg-surface-hover px-1.5 py-0.5 text-[11px] tabular-nums text-foreground"
+                              data-testid="generation-quality-score"
+                            >
+                              Score {quality.score}
+                            </span>
+                            <span
+                              className="rounded-md border border-border bg-surface-hover px-1.5 py-0.5 text-[11px] text-foreground"
+                              data-testid="generation-quality-band"
+                            >
+                              {quality.band}
+                            </span>
+                            <span className="rounded-md border border-info/30 bg-info/15 px-1.5 py-0.5 text-[11px] text-info">
+                              {quality.recommendation}
+                            </span>
+                          </>
                         ) : null}
                         {isApplied(item) ? (
                           <StatusBadge status="completed" />

@@ -44,12 +44,21 @@ from app.ai.script_draft import (
     target_word_range,
     word_count,
 )
+from app.ai.script_quality_review import (
+    PURPOSE_QUALITY_REVIEW,
+    QUALITY_REVIEW_PURPOSES,
+    enrich_quality_review,
+    parse_quality_review,
+    quality_review_json_schema,
+)
 from app.audit.actions import (
     ACTION_AI_JOB_COMPLETED,
     ACTION_AI_JOB_FAILED,
     ACTION_AI_JOB_STARTED,
     ACTION_SCRIPT_AI_DRAFT_COMPLETED,
     ACTION_SCRIPT_AI_DRAFT_FAILED,
+    ACTION_SCRIPT_QUALITY_REVIEW_COMPLETED,
+    ACTION_SCRIPT_QUALITY_REVIEW_FAILED,
     ENTITY_AI_JOB,
     ENTITY_SCRIPT,
 )
@@ -296,6 +305,9 @@ def execute_job(
         schema_name = "knowledge_pack_draft"
     elif job.purpose in SCRIPT_DRAFT_PURPOSES:
         schema, _parser, schema_name = schema_and_parser_for_purpose(job.purpose)
+    elif job.purpose in QUALITY_REVIEW_PURPOSES:
+        schema = quality_review_json_schema()
+        schema_name = "script_quality_review"
 
     request = GenerationRequest(
         model_code=model.code,
@@ -360,6 +372,30 @@ def execute_job(
                 if job.purpose == PURPOSE_KNOWLEDGE_PACK_DRAFT:
                     draft = parse_knowledge_pack_draft(structured)
                     structured = draft.model_dump()
+                elif job.purpose in QUALITY_REVIEW_PURPOSES:
+                    review = parse_quality_review(structured)
+                    context_warnings = []
+                    raw_warnings = (variables.get("context_warnings") or "").strip()
+                    if raw_warnings and raw_warnings != "(None.)":
+                        context_warnings = [
+                            line.strip()
+                            for line in raw_warnings.splitlines()
+                            if line.strip()
+                        ]
+                    structured = enrich_quality_review(
+                        review,
+                        master_script=variables.get("master_script") or "",
+                        target_duration_seconds=int(
+                            variables.get("target_duration_seconds") or 60
+                        ),
+                        target_words_per_minute=int(
+                            variables.get("target_words_per_minute") or 150
+                        ),
+                        context_warnings=context_warnings,
+                    )
+                    warnings.extend(
+                        str(item) for item in (structured.get("warnings") or [])
+                    )
                 else:
                     _, parser, _ = schema_and_parser_for_purpose(job.purpose)
                     draft = parser(structured)
@@ -475,6 +511,29 @@ def execute_job(
                     ip_address=ip_address,
                     user_agent=user_agent,
                 )
+            if job.purpose == PURPOSE_QUALITY_REVIEW and job.script_id is not None:
+                structured_meta = structured or {}
+                record_audit_event(
+                    db,
+                    action=ACTION_SCRIPT_QUALITY_REVIEW_COMPLETED,
+                    entity_type=ENTITY_SCRIPT,
+                    entity_id=job.script_id,
+                    actor_user_id=actor.id if actor else job.requested_by,
+                    metadata={
+                        "job_id": str(job.id),
+                        "generation_id": str(generation.id),
+                        "purpose": job.purpose,
+                        "provider": provider_row.code,
+                        "model": model.code,
+                        "prompt_version_id": str(version.id),
+                        "overall_score": structured_meta.get("overall_score"),
+                        "quality_band": structured_meta.get("quality_band"),
+                        "tokens_total": tokens_total,
+                        "estimated_cost_usd": cost,
+                    },
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                )
             db.commit()
             db.refresh(job)
             return job
@@ -570,6 +629,21 @@ def _fail_job(
             metadata={
                 "job_id": str(job.id),
                 "document_type": job.document_type,
+                "purpose": job.purpose,
+                "error": message[:240],
+            },
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+    if job.purpose == PURPOSE_QUALITY_REVIEW and job.script_id is not None:
+        record_audit_event(
+            db,
+            action=ACTION_SCRIPT_QUALITY_REVIEW_FAILED,
+            entity_type=ENTITY_SCRIPT,
+            entity_id=job.script_id,
+            actor_user_id=actor.id if actor else job.requested_by,
+            metadata={
+                "job_id": str(job.id),
                 "purpose": job.purpose,
                 "error": message[:240],
             },
