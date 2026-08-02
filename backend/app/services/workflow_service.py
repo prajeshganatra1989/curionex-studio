@@ -400,11 +400,13 @@ def create_version_from_workspace(
         ContentVersionCreate(
             title=f"{script.script_code} — {script.title}",
             content=snapshot,
+            script_id=script.id,
         ),
         creator=actor,
         ip_address=ip_address,
         user_agent=user_agent,
         commit=False,
+        script_id=script.id,
     )
 
     from_stage = workflow.current_stage

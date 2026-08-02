@@ -1,6 +1,8 @@
-import type { ApiClient } from "@/lib/api/client";
+import { ApiError, type ApiClient } from "@/lib/api/client";
+import { listApprovals } from "@/lib/api/approvals";
 import { listProjects } from "@/lib/api/projects";
 import type { DashboardData } from "@/lib/dashboard/types";
+import { initials } from "@/lib/utils";
 
 /**
  * Isolated deterministic mock dashboard payload for modules that are not
@@ -10,10 +12,13 @@ import type { DashboardData } from "@/lib/dashboard/types";
  * - Projects metric (list total)
  * - Recent Projects panel
  *
+ * Live in Sprint 3:
+ * - Pending Reviews metric + panel (GET /approvals?status=pending)
+ *
  * Still demo:
- * - Knowledge Packs / Scripts / Drafts / Reviews / Approved metrics
+ * - Knowledge Packs / Scripts / Drafts / Approved metrics
  * - Daily goal
- * - Recent Scripts / Pending Reviews / Activity
+ * - Recent Scripts / Activity
  */
 export const DEMO_DASHBOARD: DashboardData = {
   metrics: {
@@ -25,6 +30,7 @@ export const DEMO_DASHBOARD: DashboardData = {
     approvedScripts: 31,
     isDemo: true,
     projectsLive: false,
+    pendingReviewsLive: false,
   },
   dailyGoal: {
     label: "2 videos per day",
@@ -90,6 +96,8 @@ export const DEMO_DASHBOARD: DashboardData = {
       status: "pending",
       reviewerInitials: "PG",
       updatedAt: new Date(Date.now() - 55 * 60 * 1000).toISOString(),
+      projectCode: "CRX-0001",
+      scriptCode: "CRX-0001-S01",
     },
     {
       id: "r2",
@@ -98,8 +106,12 @@ export const DEMO_DASHBOARD: DashboardData = {
       status: "pending",
       reviewerInitials: null,
       updatedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+      projectCode: "CRX-0002",
+      scriptCode: "CRX-0002-S01",
     },
   ],
+  pendingReviewsLive: false,
+  pendingReviewsRestricted: false,
   recentActivity: [
     {
       id: "a1",
@@ -136,14 +148,55 @@ export const DEMO_DASHBOARD: DashboardData = {
 export async function getDashboardData(api: ApiClient): Promise<DashboardData> {
   const projects = await listProjects(api, { page: 1, page_size: 5 });
 
+  let pendingReviews = DEMO_DASHBOARD.pendingReviews;
+  let pendingReviewsLive = false;
+  let pendingReviewsRestricted = false;
+  let pendingReviewsTotal = DEMO_DASHBOARD.metrics.pendingReviews;
+
+  try {
+    const approvals = await listApprovals(api, {
+      page: 1,
+      page_size: 5,
+      status: "pending",
+    });
+    pendingReviews = approvals.items.map((item) => ({
+      id: item.id,
+      title: item.script?.title ?? item.content_version.title,
+      versionNumber: item.content_version.version_number,
+      status: item.status,
+      reviewerInitials: item.reviewed_by
+        ? initials(
+            `${item.reviewed_by.first_name} ${item.reviewed_by.last_name}`,
+          )
+        : initials(
+            `${item.requested_by.first_name} ${item.requested_by.last_name}`,
+          ),
+      updatedAt: item.created_at,
+      projectCode: item.project.project_code,
+      scriptCode: item.script?.script_code ?? null,
+    }));
+    pendingReviewsTotal = approvals.total;
+    pendingReviewsLive = true;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 403) {
+      pendingReviews = [];
+      pendingReviewsRestricted = true;
+      pendingReviewsTotal = 0;
+      pendingReviewsLive = true;
+    }
+  }
+
+  const metricsStillDemo = true; // KP / Scripts / Approved metrics remain demo-backed.
+
   return {
     ...DEMO_DASHBOARD,
     metrics: {
       ...DEMO_DASHBOARD.metrics,
       projects: projects.total,
       projectsLive: true,
-      // Remaining metric cards are still demo-backed.
-      isDemo: true,
+      pendingReviews: pendingReviewsTotal,
+      pendingReviewsLive,
+      isDemo: metricsStillDemo,
     },
     recentProjects: projects.items.map((project) => ({
       id: project.id,
@@ -154,5 +207,8 @@ export async function getDashboardData(api: ApiClient): Promise<DashboardData> {
       updatedAt: project.updated_at,
     })),
     recentProjectsLive: true,
+    pendingReviews,
+    pendingReviewsLive,
+    pendingReviewsRestricted,
   };
 }

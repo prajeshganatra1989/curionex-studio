@@ -9,6 +9,8 @@ export type DashboardMetrics = {
   isDemo: boolean;
   /** True when the Projects metric comes from GET /projects total. */
   projectsLive: boolean;
+  /** True when Pending Reviews metric comes from GET /approvals total. */
+  pendingReviewsLive: boolean;
 };
 
 export type DailyGoal = {
@@ -43,6 +45,8 @@ export type PendingReview = {
   status: string;
   reviewerInitials: string | null;
   updatedAt: string;
+  projectCode?: string;
+  scriptCode?: string | null;
 };
 
 export type RecentActivity = {
@@ -60,6 +64,8 @@ export type DashboardData = {
   recentProjectsLive: boolean;
   recentScripts: RecentScript[];
   pendingReviews: PendingReview[];
+  pendingReviewsLive: boolean;
+  pendingReviewsRestricted: boolean;
   recentActivity: RecentActivity[];
   activityRestricted: boolean;
 };

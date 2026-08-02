@@ -620,7 +620,11 @@ def test_version_numbering_with_workflow_versions(
     approval = client.post(
         f"/scripts/{script['id']}/workflow/submit-review", headers=headers
     ).json()["approval"]["id"]
-    client.post(f"/approvals/{approval}/reject", headers=headers, json={})
+    client.post(
+        f"/approvals/{approval}/reject",
+        headers=headers,
+        json={"comment": "Needs a stronger hook"},
+    )
     v2 = client.post(
         f"/scripts/{script['id']}/workflow/create-version", headers=headers
     ).json()["content_version"]

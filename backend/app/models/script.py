@@ -88,7 +88,9 @@ class Script(Base):
 
     project: Mapped[Project] = relationship()
     knowledge_pack: Mapped[KnowledgePack | None] = relationship()
-    content_version: Mapped[ContentVersion | None] = relationship()
+    content_version: Mapped[ContentVersion | None] = relationship(
+        foreign_keys=[content_version_id]
+    )
     creator: Mapped[User] = relationship(foreign_keys=[created_by])
     documents: Mapped[list[ScriptDocument]] = relationship(
         back_populates="script",

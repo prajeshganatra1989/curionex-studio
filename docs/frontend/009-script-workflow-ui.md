@@ -57,8 +57,11 @@ Invalid actions are not offered as primary workflow CTA (Create Version header b
 
 **Approved:** strong banner; approved version listed; workspace edits do not mutate the snapshot.
 
-**Revisions requested:** banner after rejection return to workspace; user updates ScriptDocuments and must create a new version. Approval comments are not copied into documents.
+**Revisions requested:** banner after rejection return to workspace; loads reviewer comment from `GET /approvals/{latest_approval.id}`; user updates ScriptDocuments and must create a new version. Approval comments are not copied into documents.
 
-## Full review UI
+## Review UI
 
-Approve / reject decision UI is **out of scope** for v0.14.0 (next production sprint).
+Full approve / reject / cancel flows live at `/reviews` and `/reviews/{approvalId}`. See [010-reviews-approval-ui.md](./010-reviews-approval-ui.md).
+
+- **View Review** opens the pending approval detail (or inbox when id unavailable)
+- Version history **Open Review** uses the same routes

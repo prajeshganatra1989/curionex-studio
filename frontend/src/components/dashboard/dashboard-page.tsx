@@ -162,7 +162,7 @@ export function DashboardPage() {
           hint="Awaiting review"
           icon={ClipboardList}
           accent="warning"
-          isDemo
+          isDemo={!metrics.pendingReviewsLive}
         />
         <MetricCard
           label="Approved Scripts"
@@ -201,12 +201,15 @@ export function DashboardPage() {
           title="Pending Reviews"
           action={
             <div className="flex items-center gap-2">
-              <DemoMark />
-              <ViewAllLink href="/reviews" />
+              {data.pendingReviewsLive ? <LiveMark /> : <DemoMark />}
+              <ViewAllLink href="/reviews?status=pending" />
             </div>
           }
         >
-          <PendingReviewsList reviews={data.pendingReviews} />
+          <PendingReviewsList
+            reviews={data.pendingReviews}
+            restricted={data.pendingReviewsRestricted}
+          />
         </SectionPanel>
       </div>
 

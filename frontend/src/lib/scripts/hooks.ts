@@ -13,12 +13,12 @@ import {
   getScript,
   getScriptWorkflow,
   getWorkflowStatus,
-  listProjectContentVersions,
   listScriptDocuments,
   submitWorkflowReview,
   updateScript,
   updateScriptDocument,
 } from "@/lib/api/projects";
+import { listScriptContentVersions } from "@/lib/api/approvals";
 import type {
   ScriptDocumentUpdateInput,
   ScriptUpdateInput,
@@ -38,8 +38,8 @@ export const scriptKeys = {
     [...scriptKeys.detail(scriptId), "workflow"] as const,
   workflowStatus: (scriptId: string) =>
     [...scriptKeys.detail(scriptId), "workflow-status"] as const,
-  versions: (projectId: string, scriptCode: string) =>
-    [...scriptKeys.all, "versions", projectId, scriptCode] as const,
+  versions: (scriptId: string) =>
+    [...scriptKeys.all, "versions", scriptId] as const,
   versionDetail: (versionId: string) =>
     [...scriptKeys.all, "version", versionId] as const,
 };
@@ -157,27 +157,22 @@ export function useSubmitWorkflowReview(scriptId: string) {
       void qc.invalidateQueries({
         queryKey: scriptKeys.workflowStatus(scriptId),
       });
+      void qc.invalidateQueries({ queryKey: ["reviews"] });
+      void qc.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
 }
 
-export function useScriptVersions(projectId: string, scriptCode: string) {
+export function useScriptVersions(scriptId: string) {
   const { api, status } = useAuth();
   return useQuery({
-    queryKey: scriptKeys.versions(projectId, scriptCode),
-    queryFn: async () => {
-      const page = await listProjectContentVersions(api, projectId, {
+    queryKey: scriptKeys.versions(scriptId),
+    queryFn: () =>
+      listScriptContentVersions(api, scriptId, {
         page: 1,
         page_size: 100,
-      });
-      const prefix = `${scriptCode} —`;
-      return {
-        ...page,
-        items: page.items.filter((item) => item.title.startsWith(prefix)),
-      };
-    },
-    enabled:
-      status === "authenticated" && Boolean(projectId) && Boolean(scriptCode),
+      }),
+    enabled: status === "authenticated" && Boolean(scriptId),
   });
 }
 

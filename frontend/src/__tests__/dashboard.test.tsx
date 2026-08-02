@@ -54,6 +54,7 @@ const liveDashboard: DashboardData = {
     approvedScripts: 31,
     isDemo: true,
     projectsLive: true,
+    pendingReviewsLive: true,
   },
   dailyGoal: {
     label: "2 videos per day",
@@ -82,6 +83,8 @@ const liveDashboard: DashboardData = {
     },
   ],
   pendingReviews: [],
+  pendingReviewsLive: true,
+  pendingReviewsRestricted: false,
   recentActivity: [],
   activityRestricted: false,
 };
@@ -107,7 +110,7 @@ describe("DashboardPage", () => {
     expect(screen.getByText("CRX-0099")).toBeInTheDocument();
     expect(screen.getByText("Mixed live + demo")).toBeInTheDocument();
     expect(screen.getAllByText("Demo").length).toBeGreaterThan(0);
-    expect(screen.getByText("Live")).toBeInTheDocument();
+    expect(screen.getAllByText("Live").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole("heading", { name: "Recent Projects" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Recent Scripts" })).toBeInTheDocument();
   });

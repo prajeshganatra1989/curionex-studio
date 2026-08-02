@@ -341,12 +341,13 @@ export function ScriptWorkspace() {
       return;
     }
     if (kind === "view_review") {
-      setRightDrawer("progress");
-      toast({
-        title: "Pending review",
-        description: "Approval decisions are handled in the next sprint.",
-        tone: "info",
-      });
+      const approvalId = workflowQuery.data?.pending_approval?.id;
+      if (approvalId) {
+        router.push(`/reviews/${approvalId}`);
+      } else {
+        router.push("/reviews?status=pending");
+      }
+      return;
     }
   }
 
@@ -652,8 +653,9 @@ export function ScriptWorkspace() {
             />
             <VersionHistoryPanel
               projectId={projectId}
-              scriptCode={script.script_code}
+              scriptId={scriptId}
               workflow={workflowQuery.data}
+              latestApproval={workflowDetailQuery.data?.latest_approval}
             />
           </div>
         </div>
@@ -686,8 +688,9 @@ export function ScriptWorkspace() {
               />
               <VersionHistoryPanel
                 projectId={projectId}
-                scriptCode={script.script_code}
+                scriptId={scriptId}
                 workflow={workflowQuery.data}
+                latestApproval={workflowDetailQuery.data?.latest_approval}
               />
             </>
           )}
