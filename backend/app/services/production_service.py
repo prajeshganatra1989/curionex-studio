@@ -342,6 +342,11 @@ def _openai_provider_blocker(db: Session) -> bool:
 
 
 def _brand_voice(db: Session) -> str:
+    from app.services.content_standard_service import get_active
+
+    standard = get_active(db)
+    if standard is not None and standard.brand_voice.strip():
+        return standard.brand_voice.strip()
     settings = db.scalar(select(AiSettings).limit(1))
     if settings is None or not (settings.brand_voice or "").strip():
         return DEFAULT_BRAND_VOICE.strip()

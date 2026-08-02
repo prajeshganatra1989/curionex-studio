@@ -26,9 +26,7 @@ from app.ai.constants import (
 )
 from app.ai.job_executor import execute_job
 from app.ai.script_draft import (
-    DEFAULT_BRAND_VOICE,
     DEFAULT_CONFLICT_STRATEGY,
-    DEFAULT_QUALITY_REQUIREMENTS,
     DEFAULT_TARGET_DURATION_SECONDS,
     DEFAULT_TARGET_WORDS_PER_MINUTE,
     PURPOSE_BY_DOCUMENT_TYPE,
@@ -49,6 +47,7 @@ from app.audit.actions import (
     ENTITY_AI_PROMPT_VERSION,
     ENTITY_SCRIPT,
 )
+from app.editorial.content_standard_prompt import inject_content_standard_variables
 from app.models.ai import (
     AiGeneration,
     AiJob,
@@ -64,6 +63,9 @@ from app.models.user import User
 from app.scripts.catalog import DOCUMENT_TYPES
 from app.services import ai_service, script_service
 from app.services.audit_service import record_audit_event
+from app.services.content_standard_service import (
+    get_active as get_active_content_standard,
+)
 
 DEFAULT_LANGUAGE = "English"
 DEFAULT_TONE = "curious, cinematic, clear"
@@ -102,7 +104,7 @@ class PrerequisiteError(Exception):
 _DISCOVERY_BRIEF_SYSTEM_PROMPT = """You are Curionex Studio's script development assistant creating a Discovery Brief for a short-form educational video.
 A Discovery Brief defines the topic, audience, and angle before any narrative writing begins.
 Ground your work in the supplied Knowledge Pack context — never invent facts beyond it.
-Mark every claim that still needs verification. Avoid sensationalism and false certainty.
+Follow {{content_standard_label}}. Mark every claim that still needs verification.
 Return ONLY the required structured schema."""
 
 _DISCOVERY_BRIEF_USER_TEMPLATE = """Project: {{project_title}} ({{project_code}})
@@ -138,16 +140,15 @@ Language: {{language}}
 Tone: {{tone}}
 Target duration: {{target_duration_seconds}} seconds
 
-Brand voice: {{brand_voice}}
-Quality requirements: {{quality_requirements}}
+Follow the Curionex Content Standard (do not invent conflicting editorial rules):
+{{content_standard}}
 
 Produce a Discovery Brief draft for this script."""
 
 _STORY_SPINE_SYSTEM_PROMPT = """You are Curionex Studio's script development assistant creating a Story Spine for a short-form educational video.
-The Story Spine turns an approved Discovery Brief into a beat-by-beat narrative structure: hook, setup, curiosity gap, progression, core explanation, reveal, ending, and call to action.
+The Story Spine turns an approved Discovery Brief into a beat-by-beat narrative structure aligned with the Curionex Content Standard.
 Stay faithful to the Discovery Brief — do not introduce new facts or claims it does not support.
-Flag retention risks and any claim that still needs verification. Avoid sensationalism and false certainty.
-Return ONLY the required structured schema."""
+Follow {{content_standard_label}}. Return ONLY the required structured schema."""
 
 _STORY_SPINE_USER_TEMPLATE = """Project: {{project_title}} ({{project_code}})
 Script: {{script_title}}
@@ -169,15 +170,15 @@ Tone: {{tone}}
 Target duration: {{target_duration_seconds}} seconds
 Target narration length: {{target_word_count_low}}-{{target_word_count_high}} words (target {{target_word_count_target}})
 
-Brand voice: {{brand_voice}}
-Quality requirements: {{quality_requirements}}
+Follow the Curionex Content Standard (do not invent conflicting editorial rules):
+{{content_standard}}
 
 Produce a Story Spine draft for this script."""
 
 _MASTER_SCRIPT_SYSTEM_PROMPT = """You are Curionex Studio's script development assistant writing the Master Script narration for a short-form educational video.
 The Master Script is the final spoken narration, built strictly from the approved Discovery Brief and Story Spine.
 Do not introduce new facts or claims beyond what the Discovery Brief and Story Spine support.
-Write narration meant to be read aloud: natural spoken rhythm, no stage directions inside the narration text.
+Write narration meant to be read aloud. Follow {{content_standard_label}}.
 Aim for the target word count range for the target duration. Flag any claim that still needs verification.
 Return ONLY the required structured schema."""
 
@@ -205,10 +206,11 @@ Target duration: {{target_duration_seconds}} seconds
 Target words per minute: {{target_words_per_minute}}
 Target narration length: {{target_word_count_low}}-{{target_word_count_high}} words (target {{target_word_count_target}})
 
-Brand voice: {{brand_voice}}
-Quality requirements: {{quality_requirements}}
+Follow the Curionex Content Standard (do not invent conflicting editorial rules):
+{{content_standard}}
 
 Produce the Master Script narration draft for this script."""
+
 
 _PROMPT_DEFINITIONS: dict[str, dict[str, Any]] = {
     PURPOSE_DISCOVERY_BRIEF: {
@@ -234,8 +236,8 @@ _PROMPT_DEFINITIONS: dict[str, dict[str, Any]] = {
             "language",
             "tone",
             "target_duration_seconds",
-            "brand_voice",
-            "quality_requirements",
+            "content_standard",
+            "content_standard_label",
         ],
     },
     PURPOSE_STORY_SPINE: {
@@ -257,8 +259,8 @@ _PROMPT_DEFINITIONS: dict[str, dict[str, Any]] = {
             "target_word_count_low",
             "target_word_count_target",
             "target_word_count_high",
-            "brand_voice",
-            "quality_requirements",
+            "content_standard",
+            "content_standard_label",
         ],
     },
     PURPOSE_MASTER_SCRIPT: {
@@ -282,8 +284,8 @@ _PROMPT_DEFINITIONS: dict[str, dict[str, Any]] = {
             "target_word_count_low",
             "target_word_count_target",
             "target_word_count_high",
-            "brand_voice",
-            "quality_requirements",
+            "content_standard",
+            "content_standard_label",
         ],
     },
 }
@@ -416,9 +418,7 @@ def _documents_by_type(script: Script) -> dict[str, ScriptDocument]:
     return {document.document_type: document for document in script.documents}
 
 
-def _knowledge_pack_sections(
-    db: Session, script: Script
-) -> list[KnowledgePackSection]:
+def _knowledge_pack_sections(db: Session, script: Script) -> list[KnowledgePackSection]:
     if not script.knowledge_pack_id:
         return []
     return list(
@@ -513,11 +513,6 @@ def _build_variables(
 ) -> dict[str, str]:
     docs = _documents_by_type(script)
     sections = _knowledge_pack_sections(db, script)
-    settings = ai_service.get_or_create_settings(db)
-    brand_voice = (settings.brand_voice or DEFAULT_BRAND_VOICE).strip()
-    quality_requirements = (
-        settings.quality_requirements or DEFAULT_QUALITY_REQUIREMENTS
-    ).strip()
     lo, target, hi = target_word_range(
         target_duration_seconds=target_duration_seconds,
         target_words_per_minute=target_words_per_minute,
@@ -538,8 +533,6 @@ def _build_variables(
         "target_word_count_low": str(lo),
         "target_word_count_target": str(target),
         "target_word_count_high": str(hi),
-        "brand_voice": brand_voice,
-        "quality_requirements": quality_requirements,
         "claims_requiring_verification": _extract_claims_requiring_verification(
             discovery_text
         ),
@@ -549,7 +542,7 @@ def _build_variables(
         document = docs.get(dependency)
         variables[dependency] = (document.content if document else "").strip()
 
-    return variables
+    return inject_content_standard_variables(db, variables)
 
 
 def _input_fingerprint(
@@ -570,12 +563,12 @@ def _input_fingerprint(
         section.section_key: content_fingerprint(section.content)
         for section in sections
     }
-    settings = ai_service.get_or_create_settings(db)
+    standard = get_active_content_standard(db)
     settings_snapshot = {
-        "brand_voice": (settings.brand_voice or DEFAULT_BRAND_VOICE).strip(),
-        "quality_requirements": (
-            settings.quality_requirements or DEFAULT_QUALITY_REQUIREMENTS
-        ).strip(),
+        "content_standard_id": str(standard.id) if standard else None,
+        "content_standard_version": standard.version if standard else None,
+        "brand_voice": standard.brand_voice.strip() if standard else "",
+        "quality_requirements": standard.quality_checklist.strip() if standard else "",
     }
     return {
         "document_type": document_type,

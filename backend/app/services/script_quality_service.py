@@ -19,8 +19,6 @@ from app.ai.constants import (
 )
 from app.ai.job_executor import execute_job
 from app.ai.script_draft import (
-    DEFAULT_BRAND_VOICE,
-    DEFAULT_QUALITY_REQUIREMENTS,
     DEFAULT_TARGET_DURATION_SECONDS,
     DEFAULT_TARGET_WORDS_PER_MINUTE,
     content_fingerprint,
@@ -42,6 +40,7 @@ from app.audit.actions import (
     ENTITY_AI_PROMPT_VERSION,
     ENTITY_SCRIPT,
 )
+from app.editorial.content_standard_prompt import inject_content_standard_variables
 from app.models.ai import (
     AiGeneration,
     AiJob,
@@ -56,6 +55,9 @@ from app.models.script import Script, ScriptDocument
 from app.models.user import User
 from app.services import ai_service, script_service
 from app.services.audit_service import record_audit_event
+from app.services.content_standard_service import (
+    get_active as get_active_content_standard,
+)
 
 DEFAULT_LANGUAGE = "English"
 
@@ -66,8 +68,7 @@ Evaluate the Master Script as spoken narration for a YouTube Short.
 Provide specific evidence from the script. Prefer a few high-impact issues over many minor notes.
 Never claim external fact verification. Every factual risk requires human verification.
 Do not rewrite the entire script. Do not inflate scores. Do not recommend manipulative clickbait.
-Respect the configured brand voice and quality requirements.
-Return ONLY the required structured schema."""
+Follow {{content_standard_label}}. Return ONLY the required structured schema."""
 
 USER_TEMPLATE = """Project: {{project_title}} ({{project_code}})
 Script: {{script_title}} ({{script_code}})
@@ -78,8 +79,8 @@ Target words per minute: {{target_words_per_minute}}
 Estimated word count (server): {{estimated_word_count}}
 Estimated duration seconds (server): {{estimated_duration_seconds}}
 
-Brand voice: {{brand_voice}}
-Quality requirements: {{quality_requirements}}
+Follow the Curionex Content Standard (do not invent conflicting editorial rules):
+{{content_standard}}
 
 Knowledge Pack — facts:
 {{knowledge_pack_facts}}
@@ -115,8 +116,8 @@ PROMPT_VARIABLES = [
     "language",
     "target_duration_seconds",
     "target_words_per_minute",
-    "brand_voice",
-    "quality_requirements",
+    "content_standard",
+    "content_standard_label",
     "knowledge_pack_facts",
     "knowledge_pack_sources",
     "knowledge_pack_content_angle",
@@ -254,9 +255,7 @@ def _documents_by_type(script: Script) -> dict[str, ScriptDocument]:
     return {document.document_type: document for document in script.documents}
 
 
-def _knowledge_pack_sections(
-    db: Session, script: Script
-) -> list[KnowledgePackSection]:
+def _knowledge_pack_sections(db: Session, script: Script) -> list[KnowledgePackSection]:
     if not script.knowledge_pack_id:
         return []
     return list(
@@ -281,7 +280,9 @@ def _section_map(sections: list[KnowledgePackSection]) -> dict[str, str]:
 
 def _context_warnings(docs: dict[str, ScriptDocument]) -> list[str]:
     warnings: list[str] = []
-    discovery = (docs.get("discovery_brief").content if docs.get("discovery_brief") else "") or ""
+    discovery = (
+        docs.get("discovery_brief").content if docs.get("discovery_brief") else ""
+    ) or ""
     spine = (docs.get("story_spine").content if docs.get("story_spine") else "") or ""
     if not discovery.strip():
         warnings.append(
@@ -300,7 +301,6 @@ def _input_fingerprint(
     db: Session,
     *,
     script: Script,
-    brand_voice: str,
     prompt_version_id: UUID,
 ) -> dict[str, Any]:
     docs = _documents_by_type(script)
@@ -309,6 +309,7 @@ def _input_fingerprint(
         section.section_key: content_fingerprint(section.content or "")
         for section in sections
     }
+    standard = get_active_content_standard(db)
     return {
         "master_script": content_fingerprint(
             docs["master_script"].content if "master_script" in docs else ""
@@ -323,7 +324,9 @@ def _input_fingerprint(
             str(script.knowledge_pack_id) if script.knowledge_pack_id else None
         ),
         "knowledge_pack_section_hashes": section_hashes,
-        "brand_voice": content_fingerprint(brand_voice),
+        "content_standard_id": str(standard.id) if standard else None,
+        "content_standard_version": standard.version if standard else None,
+        "brand_voice": content_fingerprint(standard.brand_voice if standard else ""),
         "review_policy": policy_fingerprint(),
         "prompt_version_id": str(prompt_version_id),
     }
@@ -340,12 +343,9 @@ def is_generation_stale(db: Session, generation: AiGeneration) -> bool:
     )
     if script is None:
         return True
-    settings = ai_service.get_or_create_settings(db)
-    brand_voice = (settings.brand_voice or DEFAULT_BRAND_VOICE).strip()
     current = _input_fingerprint(
         db,
         script=script,
-        brand_voice=brand_voice,
         prompt_version_id=generation.prompt_version_id,
     )
     return current != stored
@@ -406,11 +406,6 @@ def create_quality_review_job(
         or settings.default_target_words_per_minute
         or DEFAULT_TARGET_WORDS_PER_MINUTE
     )
-    brand_voice = (settings.brand_voice or DEFAULT_BRAND_VOICE).strip()
-    quality_requirements = (
-        settings.quality_requirements or DEFAULT_QUALITY_REQUIREMENTS
-    ).strip()
-
     sections = _knowledge_pack_sections(db, script)
     section_vars = _section_map(sections)
     warnings = _context_warnings(docs)
@@ -418,35 +413,35 @@ def create_quality_review_job(
     est_duration = max(1, int(round((words / max(1, resolved_wpm)) * 60)))
 
     project: Project = script.project
-    variables: dict[str, str] = {
-        "project_code": project.project_code,
-        "project_title": project.name,
-        "script_code": script.script_code,
-        "script_title": script.title,
-        "language": (language or DEFAULT_LANGUAGE).strip(),
-        "target_duration_seconds": str(resolved_duration),
-        "target_words_per_minute": str(resolved_wpm),
-        "brand_voice": brand_voice,
-        "quality_requirements": quality_requirements,
-        **section_vars,
-        "discovery_brief": (
-            (docs["discovery_brief"].content if "discovery_brief" in docs else "")
-            or "(Empty.)"
-        ).strip(),
-        "story_spine": (
-            (docs["story_spine"].content if "story_spine" in docs else "")
-            or "(Empty.)"
-        ).strip(),
-        "master_script": master_text.strip(),
-        "estimated_word_count": str(words),
-        "estimated_duration_seconds": str(est_duration),
-        "context_warnings": "\n".join(warnings) if warnings else "(None.)",
-        "max_priority_issues": str(MAX_PRIORITY_ISSUES),
-    }
+    variables: dict[str, str] = inject_content_standard_variables(
+        db,
+        {
+            "project_code": project.project_code,
+            "project_title": project.name,
+            "script_code": script.script_code,
+            "script_title": script.title,
+            "language": (language or DEFAULT_LANGUAGE).strip(),
+            "target_duration_seconds": str(resolved_duration),
+            "target_words_per_minute": str(resolved_wpm),
+            **section_vars,
+            "discovery_brief": (
+                (docs["discovery_brief"].content if "discovery_brief" in docs else "")
+                or "(Empty.)"
+            ).strip(),
+            "story_spine": (
+                (docs["story_spine"].content if "story_spine" in docs else "")
+                or "(Empty.)"
+            ).strip(),
+            "master_script": master_text.strip(),
+            "estimated_word_count": str(words),
+            "estimated_duration_seconds": str(est_duration),
+            "context_warnings": "\n".join(warnings) if warnings else "(None.)",
+            "max_priority_issues": str(MAX_PRIORITY_ISSUES),
+        },
+    )
     fingerprint = _input_fingerprint(
         db,
         script=script,
-        brand_voice=brand_voice,
         prompt_version_id=version.id,
     )
 
@@ -590,7 +585,11 @@ def apply_suggestion(
     structured = generation.structured_output_json or {}
     issues = structured.get("priority_issues") or []
     issue = next(
-        (item for item in issues if str(item.get("id", "")).strip() == issue_id.strip()),
+        (
+            item
+            for item in issues
+            if str(item.get("id", "")).strip() == issue_id.strip()
+        ),
         None,
     )
     if issue is None:
@@ -651,9 +650,7 @@ def apply_suggestion(
     db.commit()
     db.refresh(document)
     db.refresh(generation)
-    document = script_service.get_document(
-        db, script.id, "master_script", actor=actor
-    )
+    document = script_service.get_document(db, script.id, "master_script", actor=actor)
     return document, generation, False
 
 

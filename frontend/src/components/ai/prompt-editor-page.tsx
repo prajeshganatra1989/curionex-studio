@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { VariableChips } from "@/components/ai/variable-chips";
+import { ContentStandardUsageBadge } from "@/components/editorial/content-standard-usage-badge";
 import { PageContainer, PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -154,6 +155,8 @@ export function PromptEditorPage({ promptId }: PromptEditorPageProps) {
           </Link>
         }
       />
+
+      {!restricted ? <ContentStandardUsageBadge /> : null}
 
       {isLoading ? (
         <div className="space-y-4" aria-busy="true">

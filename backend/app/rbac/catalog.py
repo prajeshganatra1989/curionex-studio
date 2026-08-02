@@ -200,6 +200,16 @@ PERMISSION_CATALOG: list[dict[str, str]] = [
         "name": "Archive editorial topics",
         "description": "Soft-archive Editorial Library topics",
     },
+    {
+        "code": "content_standards.view",
+        "name": "View content standards",
+        "description": "View the Curionex Content Standard",
+    },
+    {
+        "code": "content_standards.manage",
+        "name": "Manage content standards",
+        "description": "Create, update, activate, and archive Content Standards",
+    },
 ]
 
 ALL_PERMISSION_CODES: list[str] = [item["code"] for item in PERMISSION_CATALOG]
@@ -244,6 +254,8 @@ ROLE_CATALOG: dict[str, dict] = {
             "editorial_topics.create",
             "editorial_topics.update",
             "editorial_topics.delete",
+            "content_standards.view",
+            "content_standards.manage",
         ],
     },
     "Script Writer": {
@@ -266,6 +278,7 @@ ROLE_CATALOG: dict[str, dict] = {
             "prompt.manage",
             "production.view",
             "editorial_topics.view",
+            "content_standards.view",
         ],
     },
     "Reviewer": {
@@ -284,6 +297,7 @@ ROLE_CATALOG: dict[str, dict] = {
             "ai.view",
             "production.view",
             "editorial_topics.view",
+            "content_standards.view",
         ],
     },
 }

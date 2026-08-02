@@ -56,6 +56,21 @@ vi.mock("@/lib/api/ai", async () => {
   };
 });
 
+vi.mock("@/lib/api/content-standards", () => ({
+  getContentStandardSummary: vi.fn().mockResolvedValue({
+    id: "std-1",
+    name: "Curionex Content Standard",
+    version: "1",
+    status: "active",
+    label: "Curionex Content Standard v1",
+    updated_at: "2026-08-01T00:00:00Z",
+    has_active: true,
+  }),
+  getActiveContentStandard: vi.fn(),
+  listContentStandards: vi.fn(),
+  getContentStandard: vi.fn(),
+}));
+
 vi.mock("@/lib/auth/auth-context", () => ({
   useAuth: () => ({
     status: "authenticated",
@@ -150,6 +165,9 @@ describe("AI Prompts UI", () => {
     expect(screen.getByDisplayValue("Write about {{topic}}.")).toBeInTheDocument();
     expect(screen.getByTestId("version-history")).toHaveTextContent("v1");
     expect(screen.getByTestId("variable-chips")).toHaveTextContent("{{topic}}");
+    expect(await screen.findByTestId("content-standard-usage")).toHaveTextContent(
+      "Uses: Curionex Content Standard v1",
+    );
   });
 
   it("validates variables before saving a new version", async () => {
