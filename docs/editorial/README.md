@@ -27,3 +27,6 @@ Internal handbook for topics, production curation, Content Standard, and writing
 | 020 | [**Editorial Bible v1.0**](./020-editorial-bible-v1.md) |
 
 Craft snippets (008–010) remain useful for quick reference; the Bible is authoritative when documents differ in depth.
+
+**Sonic brand:** [../production/007-voice-narration-bible-v1.md](../production/007-voice-narration-bible-v1.md) — how Curionex should *sound* (companion to the Editorial Bible).
+
