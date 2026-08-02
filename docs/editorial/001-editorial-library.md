@@ -2,6 +2,9 @@
 
 The Editorial Library is the single source of truth for future YouTube Shorts ideas in Curionex Studio.
 
+> **Editorial operating system:** [020-editorial-bible-v1.md](./020-editorial-bible-v1.md) — Curionex Editorial Bible v1.0 (voice, structure, integrity, Founding Collection, quality gates).  
+> Topic planning lives here; **how we write** lives in the Bible and the active [Content Standard](./007-curionex-content-standard.md).
+
 ## Purpose
 
 - Plan and organize evergreen topics (target capacity: 1,000+)
@@ -46,6 +49,8 @@ Create Project also requires `projects.create`.
 
 ## Related
 
+- [020-editorial-bible-v1.md](./020-editorial-bible-v1.md) — **Editorial Bible v1.0**
+- [007-curionex-content-standard.md](./007-curionex-content-standard.md)
 - [002-topic-lifecycle.md](./002-topic-lifecycle.md)
 - [003-topic-seeding.md](./003-topic-seeding.md)
 - [004-create-project-from-topic.md](./004-create-project-from-topic.md)
