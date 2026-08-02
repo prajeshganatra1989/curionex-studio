@@ -416,6 +416,27 @@ export type ProductionPackageStoryboardScene = {
   transition: string;
 };
 
+export type ProductionPackageStoryboardV2Scene = {
+  scene_number: number;
+  start_time: number;
+  end_time: number;
+  duration: number;
+  narration: string;
+  scene_goal: string;
+  viewer_emotion: string;
+  visual_type: string;
+  camera_movement: string;
+  transition: string;
+  animation_suggestion: string;
+  on_screen_text: string;
+  text_position: string;
+  asset_required: string;
+  music_mood: string;
+  sound_effects: string;
+  notes: string;
+  purpose: ProductionPackageScenePurpose;
+};
+
 export type ProductionPackageShot = {
   shot_number: number;
   scene_number: number;
@@ -521,6 +542,7 @@ export type ProductionPackage = {
     notes: string;
   };
   storyboard: ProductionPackageStoryboardScene[];
+  storyboard_v2: ProductionPackageStoryboardV2Scene[];
   shot_list: ProductionPackageShot[];
   asset_checklist: ProductionPackageAssetItem[];
   voice_package: ProductionPackageVoice;

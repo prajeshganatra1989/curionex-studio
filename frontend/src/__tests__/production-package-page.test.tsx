@@ -4,7 +4,11 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement, ReactNode } from "react";
 
-import { ProductionPackagePage } from "@/components/scripts/production-package-page";
+import {
+  ProductionPackagePage,
+  storyboardV2ToMarkdown,
+} from "@/components/scripts/production-package-page";
+import type { ProductionPackage } from "@/lib/api/types";
 
 const pushMock = vi.fn();
 vi.mock("next/navigation", () => ({
@@ -50,7 +54,7 @@ function wrap(ui: ReactElement) {
   );
 }
 
-const samplePackage = {
+const samplePackage: ProductionPackage = {
   project: {
     id: "proj-1",
     project_code: "CRX-0001",
@@ -111,6 +115,28 @@ const samplePackage = {
       suggested_motion: "Static",
       suggested_on_screen_text: "Optional",
       transition: "Fade",
+    },
+  ],
+  storyboard_v2: [
+    {
+      scene_number: 1,
+      start_time: 0,
+      end_time: 4,
+      duration: 4,
+      narration: "A magnet isn't magical.",
+      scene_goal: "Open with a concrete moment",
+      viewer_emotion: "curiosity",
+      visual_type: "Macro",
+      camera_movement: "Push",
+      transition: "Fade",
+      animation_suggestion: "Gentle push-in",
+      on_screen_text: "Optional",
+      text_position: "top",
+      asset_required: "Macro",
+      music_mood: "Curious",
+      sound_effects: "None",
+      notes: "Mute-picture test.",
+      purpose: "hook",
     },
   ],
   shot_list: [
@@ -229,5 +255,31 @@ describe("ProductionPackagePage", () => {
     expect(await screen.findByText("Planning only", { exact: false })).toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: "Storyboard" }));
     expect(await screen.findByText("A magnet isn't magical.")).toBeInTheDocument();
+  });
+
+  it("shows storyboard v2 timeline cards and markdown helpers", async () => {
+    const user = userEvent.setup();
+    getEligibility.mockResolvedValue({
+      eligible: true,
+      reason: "approved",
+      gold_gate: "script_status_approved",
+      overall_score: null,
+      script_status: "approved",
+      has_approved_version: false,
+    });
+    createPackage.mockResolvedValue(samplePackage);
+    wrap(<ProductionPackagePage />);
+    await user.click(await screen.findByTestId("generate-production-package"));
+    await user.click(screen.getByRole("tab", { name: "Storyboard V2" }));
+    expect(await screen.findByTestId("storyboard-v2-panel")).toBeInTheDocument();
+    expect(screen.getByTestId("storyboard-v2-scene-1")).toBeInTheDocument();
+    expect(screen.getAllByText("Macro").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Open with a concrete moment")).toBeInTheDocument();
+    expect(screen.getByTestId("copy-storyboard-v2-markdown")).toBeInTheDocument();
+    expect(screen.getByTestId("export-storyboard-v2-markdown")).toBeInTheDocument();
+    const md = storyboardV2ToMarkdown(samplePackage.storyboard_v2, "Board");
+    expect(md).toContain("# Board");
+    expect(md).toContain("## Scene 1");
+    expect(md).toContain("Macro");
   });
 });

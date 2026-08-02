@@ -28,6 +28,7 @@ from app.production.package_schemas import (
     QaChecklistItem,
     ShotListItem,
     StoryboardScene,
+    StoryboardV2Scene,
     SubtitleSegment,
     VoicePackage,
     YouTubePackage,
@@ -40,6 +41,7 @@ from app.production.storyboard import (
     pause_markers,
     pronunciation_notes,
 )
+from app.production.storyboard_v2 import build_storyboard_v2
 from app.scripts.constants import SCRIPT_STATUS_APPROVED
 from app.services import script_quality_service, script_service
 
@@ -466,6 +468,10 @@ def generate_production_package(
 
     scenes_raw = build_storyboard_scenes(master, wpm=DEFAULT_WPM)
     storyboard = [StoryboardScene.model_validate(s) for s in scenes_raw]
+    storyboard_v2 = [
+        StoryboardV2Scene.model_validate(s)
+        for s in build_storyboard_v2(master, wpm=DEFAULT_WPM)
+    ]
     shots = _shot_list(scenes_raw)
     subtitles = [
         SubtitleSegment.model_validate(s) for s in build_subtitle_segments(scenes_raw)
@@ -513,6 +519,7 @@ def generate_production_package(
             recommended_wpm=DEFAULT_WPM,
         ),
         storyboard=storyboard,
+        storyboard_v2=storyboard_v2,
         shot_list=shots,
         asset_checklist=_asset_checklist(shots),
         voice_package=VoicePackage(

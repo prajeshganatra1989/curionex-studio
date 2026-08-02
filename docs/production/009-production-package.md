@@ -35,6 +35,7 @@ Otherwise `POST` returns **422** with `code: not_gold_approved`.
 - Quality review summary  
 - Production metadata (gate, WPM, blueprint versions)  
 - **Storyboard** — scenes ~3–6s with visual/motion/text/transition suggestions  
+- **Storyboard V2** — full production cards (goal, emotion, visual type, camera, music, SFX, notes)  
 - **Shot list** — asset types + priority  
 - **Asset checklist**  
 - **Voice package** — duration, WPM, pauses, emphasis, pronunciation  
@@ -46,7 +47,7 @@ Otherwise `POST` returns **422** with `code: not_gold_approved`.
 
 - Script workspace header button **Generate Production Package** (only when eligible)
 - Page: `/projects/{projectId}/scripts/{scriptId}/production-package`
-- Tabs: Overview · Storyboard · Shot List · Assets · Voice · Subtitles · YouTube · QA
+- Tabs: Overview · Storyboard · Storyboard V2 · Shot List · Assets · Voice · Subtitles · YouTube · QA
 
 ## Out of scope (this release)
 
