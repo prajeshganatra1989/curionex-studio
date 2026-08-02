@@ -234,7 +234,7 @@ describe("KnowledgePackEditor", () => {
     expect(await screen.findByRole("dialog", { name: "Sections" })).toBeInTheDocument();
   });
 
-  it("navigates Generate Script to project scripts placeholder", async () => {
+  it("navigates Generate Script to project scripts list", async () => {
     const user = userEvent.setup();
     wrap(<KnowledgePackEditor />);
     await screen.findByRole("heading", { name: "Core Research" });

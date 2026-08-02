@@ -120,7 +120,11 @@ export function CreateScriptModal({
   onClose: () => void;
   projectId: string;
 }) {
-  const { data: packs } = useProjectKnowledgePacks(projectId);
+  const router = useRouter();
+  const { data: packs } = useProjectKnowledgePacks(projectId, {
+    page: 1,
+    page_size: 50,
+  });
   const createScript = useCreateScript(projectId);
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
@@ -143,7 +147,7 @@ export function CreateScriptModal({
   async function onSubmit(values: ScriptValues) {
     setSubmitting(true);
     try {
-      await createScript.mutateAsync({
+      const created = await createScript.mutateAsync({
         title: values.title,
         description: values.description || null,
         knowledge_pack_id: values.knowledge_pack_id || null,
@@ -151,6 +155,7 @@ export function CreateScriptModal({
       toast({ title: "Script created", tone: "success" });
       reset();
       onClose();
+      router.push(`/projects/${projectId}/scripts/${created.id}`);
     } catch (err) {
       toast({
         title: "Could not create script",
@@ -167,7 +172,7 @@ export function CreateScriptModal({
       open={open}
       onClose={onClose}
       title="Create Script"
-      description="Document shells and a content workflow are created automatically."
+      description="Opens the Script Workspace with Discovery Brief, Story Spine, and Master Script."
     >
       <form className="space-y-4" onSubmit={handleSubmit(onSubmit)} noValidate>
         <Field label="Title" htmlFor="script-title" error={errors.title?.message}>

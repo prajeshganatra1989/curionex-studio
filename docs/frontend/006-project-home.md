@@ -7,7 +7,8 @@
 Additional tabs:
 
 - `/projects/[projectId]/packs` — Knowledge Pack list (opens editor)
-- `/projects/[projectId]/scripts` — placeholder
+- `/projects/[projectId]/scripts` — Script list (see `008-script-workspace.md`)
+- `/projects/[projectId]/scripts/[scriptId]` — Script Workspace
 - `/projects/[projectId]/versions` — placeholder
 - `/projects/[projectId]/workflow` — placeholder
 - `/projects/[projectId]/activity` — placeholder
@@ -43,9 +44,10 @@ Editor.
 
 Modal → `POST /projects/{id}/scripts` (`title`, `description`,
 `knowledge_pack_id`). Knowledge Pack options are loaded from the same project
-only. Backend creates document shells + workflow.
+only. Backend creates document shells + workflow, then the UI navigates to the
+Script Workspace.
 
 ## Editor navigation
 
-Knowledge Pack rows open the research editor. Script Workspace remains a later
-sprint.
+Knowledge Pack rows open the research editor. Script rows and Create Script open
+the Script Workspace (`008-script-workspace.md`, `009-script-workflow-ui.md`).
