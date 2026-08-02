@@ -219,6 +219,12 @@ class AiJobResponse(BaseModel):
     prompt_version_id: UUID
     model_id: UUID
     input_variables: dict[str, Any]
+    purpose: str | None = None
+    knowledge_pack_id: UUID | None = None
+    project_id: UUID | None = None
+    idempotency_key: str | None = None
+    cancel_requested: bool = False
+    generation_id: UUID | None = None
     started_at: datetime | None
     finished_at: datetime | None
     duration_ms: int | None
@@ -250,12 +256,21 @@ class AiGenerationResponse(BaseModel):
     provider_id: UUID
     input_variables: dict[str, Any]
     output_text: str | None
+    structured_output: dict[str, Any] | None = None
+    purpose: str | None = None
+    knowledge_pack_id: UUID | None = None
+    project_id: UUID | None = None
     tokens_input: int | None
     tokens_output: int | None
+    tokens_total: int | None = None
     cost_usd: float | None
     latency_ms: int | None
+    provider_request_id: str | None = None
+    model_identifier: str | None = None
     temperature: float | None
     seed: int | None
+    applied_sections: list[str] = Field(default_factory=list)
+    applied_at: datetime | None = None
     created_at: datetime
 
 
@@ -264,6 +279,54 @@ class AiGenerationListResponse(BaseModel):
     page: int
     page_size: int
     total: int
+
+
+class KnowledgePackAiDraftCreate(BaseModel):
+    model_id: UUID | None = None
+    target_audience: str = Field(default="general learners", max_length=200)
+    language: str = Field(default="en", max_length=32)
+    desired_depth: str = Field(default="standard", max_length=64)
+    idempotency_key: str | None = Field(default=None, max_length=128)
+
+    @field_validator("target_audience", "language", "desired_depth")
+    @classmethod
+    def strip_text(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("idempotency_key")
+    @classmethod
+    def strip_key(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
+
+
+class KnowledgePackAiDraftApply(BaseModel):
+    sections: list[str] = Field(min_length=1)
+    conflict_strategy: str = Field(default="reject_if_non_empty")
+
+    @field_validator("conflict_strategy")
+    @classmethod
+    def validate_strategy(cls, value: str) -> str:
+        allowed = {
+            "reject_if_non_empty",
+            "replace_selected",
+            "append_selected",
+        }
+        cleaned = value.strip()
+        if cleaned not in allowed:
+            raise ValueError(
+                "conflict_strategy must be one of: " + ", ".join(sorted(allowed))
+            )
+        return cleaned
+
+
+class KnowledgePackAiDraftApplyResponse(BaseModel):
+    knowledge_pack: dict[str, Any]
+    generation_id: UUID
+    applied_sections: list[str]
+    conflict_strategy: str
 
 
 class AiSettingsResponse(BaseModel):

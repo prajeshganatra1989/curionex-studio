@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 from app.ai.credentials import decrypt_secret, reset_fernet_cache
 from app.ai.prompt_renderer import extract_variables, render_template
 from app.ai.providers import get_provider, list_provider_codes
-from app.ai.providers.base import ProviderNotImplementedError
 from app.ai.retry import decide_retry
 from app.audit.actions import (
     ACTION_AI_JOB_CANCELLED,
@@ -69,17 +68,36 @@ def _enable_credentials_key(monkeypatch) -> str:
     return key
 
 
-def test_provider_registry_stubs_do_not_generate() -> None:
+def test_provider_registry_includes_openai_adapter() -> None:
     codes = list_provider_codes()
     assert "openai" in codes
     assert "anthropic" in codes
     provider = get_provider("openai")
+    assert provider.code == "openai"
+    # Live adapter rejects missing credentials without calling the network.
+    from app.ai.errors import ProviderConfigurationError
+    from app.ai.providers.base import GenerationRequest
+
     try:
-        provider.generate(  # type: ignore[arg-type]
-            __import__(
-                "app.ai.providers.base", fromlist=["GenerationRequest"]
-            ).GenerationRequest(
+        provider.generate(
+            GenerationRequest(
                 model_code="gpt-4o",
+                system_prompt="sys",
+                user_prompt="user",
+                api_key=None,
+            )
+        )
+        raise AssertionError("expected ProviderConfigurationError")
+    except ProviderConfigurationError:
+        pass
+
+    # Non-OpenAI providers remain stubs.
+    from app.ai.providers.base import ProviderNotImplementedError
+
+    try:
+        get_provider("anthropic").generate(
+            GenerationRequest(
+                model_code="claude",
                 system_prompt="sys",
                 user_prompt="user",
             )

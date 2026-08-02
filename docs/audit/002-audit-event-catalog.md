@@ -40,13 +40,17 @@ Stable action codes currently emitted by Curionex Studio. This catalog will grow
 | `ai.prompt_updated` | `ai_prompt` | AI prompt metadata updated |
 | `ai.prompt_version_created` | `ai_prompt_version` | Immutable prompt version created |
 | `ai.prompt_version_activated` | `ai_prompt_version` | Prompt version activated |
-| `ai.job_queued` | `ai_job` | AI job queued (no live generation in v0.16.0) |
+| `ai.job_queued` | `ai_job` | AI job queued |
+| `ai.job_started` | `ai_job` | AI job started executing |
+| `ai.job_completed` | `ai_job` | AI job completed |
+| `ai.job_failed` | `ai_job` | AI job failed |
 | `ai.job_cancelled` | `ai_job` | AI job cancelled |
 | `ai.settings_changed` | `ai_settings` | AI defaults updated |
 | `ai.provider_updated` | `ai_provider` | Provider settings updated |
 | `ai.provider_credentials_set` | `ai_provider` | Provider credentials stored (encrypted) |
 | `ai.provider_credentials_cleared` | `ai_provider` | Provider credentials cleared |
 | `ai.model_updated` | `ai_model` | Model flags updated |
+| `knowledge_pack.ai_draft_applied` | `knowledge_pack` | Selected AI draft sections applied |
 
 Reserved for future use (defined in constants / docs, not all emitted yet):
 

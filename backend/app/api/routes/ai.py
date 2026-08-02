@@ -100,7 +100,19 @@ def _prompt_response(db: Session, prompt: AiPrompt) -> AiPromptResponse:
     )
 
 
-def _job_response(job: AiJob) -> AiJobResponse:
+def _job_response(job: AiJob, db: Session | None = None) -> AiJobResponse:
+    generation_id = None
+    if db is not None and job.status == "completed":
+        from sqlalchemy import select
+
+        from app.models.ai import AiGeneration
+
+        generation_id = db.scalar(
+            select(AiGeneration.id)
+            .where(AiGeneration.job_id == job.id)
+            .order_by(AiGeneration.created_at.desc())
+            .limit(1)
+        )
     return AiJobResponse(
         id=job.id,
         status=job.status,
@@ -108,12 +120,48 @@ def _job_response(job: AiJob) -> AiJobResponse:
         prompt_version_id=job.prompt_version_id,
         model_id=job.model_id,
         input_variables=dict(job.input_variables_json or {}),
+        purpose=getattr(job, "purpose", None),
+        knowledge_pack_id=getattr(job, "knowledge_pack_id", None),
+        project_id=getattr(job, "project_id", None),
+        idempotency_key=getattr(job, "idempotency_key", None),
+        cancel_requested=bool(getattr(job, "cancel_requested", False)),
+        generation_id=generation_id,
         started_at=job.started_at,
         finished_at=job.finished_at,
         duration_ms=job.duration_ms,
         retries=job.retries,
         error_message=job.error_message,
         created_at=job.created_at,
+    )
+
+
+def _generation_response(item) -> AiGenerationResponse:
+    return AiGenerationResponse(
+        id=item.id,
+        job_id=item.job_id,
+        prompt_version_id=item.prompt_version_id,
+        model_id=item.model_id,
+        provider_id=item.provider_id,
+        input_variables=dict(item.input_variables_json or {}),
+        output_text=item.output_text,
+        structured_output=getattr(item, "structured_output_json", None),
+        purpose=getattr(item, "purpose", None),
+        knowledge_pack_id=getattr(item, "knowledge_pack_id", None),
+        project_id=getattr(item, "project_id", None),
+        tokens_input=item.tokens_input,
+        tokens_output=item.tokens_output,
+        tokens_total=getattr(item, "tokens_total", None),
+        cost_usd=item.cost_usd,
+        latency_ms=item.latency_ms,
+        provider_request_id=getattr(item, "provider_request_id", None),
+        model_identifier=getattr(item, "model_identifier", None),
+        temperature=item.temperature,
+        seed=item.seed,
+        applied_sections=[
+            str(x) for x in (getattr(item, "applied_sections_json", None) or [])
+        ],
+        applied_at=getattr(item, "applied_at", None),
+        created_at=item.created_at,
     )
 
 
@@ -426,7 +474,7 @@ def get_jobs(
         db, page=page, page_size=page_size, status=status_filter
     )
     return AiJobListResponse(
-        items=[_job_response(item) for item in items],
+        items=[_job_response(item, db) for item in items],
         page=page,
         page_size=page_size,
         total=total,
@@ -443,7 +491,7 @@ def get_job(
         job = ai_service.get_job(db, job_id)
     except ai_service.NotFoundError as exc:
         raise _map_error(exc) from None
-    return _job_response(job)
+    return _job_response(job, db)
 
 
 @router.post(
@@ -468,7 +516,7 @@ def post_job(
         )
     except (ai_service.NotFoundError, ai_service.ValidationError) as exc:
         raise _map_error(exc) from None
-    return _job_response(job)
+    return _job_response(job, db)
 
 
 @router.post("/jobs/{job_id}/cancel", response_model=AiJobResponse)
@@ -489,7 +537,7 @@ def post_cancel_job(
         )
     except (ai_service.NotFoundError, ai_service.ConflictError) as exc:
         raise _map_error(exc) from None
-    return _job_response(job)
+    return _job_response(job, db)
 
 
 @router.get("/generations", response_model=AiGenerationListResponse)
@@ -501,25 +549,7 @@ def get_generations(
 ) -> AiGenerationListResponse:
     items, total = ai_service.list_generations(db, page=page, page_size=page_size)
     return AiGenerationListResponse(
-        items=[
-            AiGenerationResponse(
-                id=item.id,
-                job_id=item.job_id,
-                prompt_version_id=item.prompt_version_id,
-                model_id=item.model_id,
-                provider_id=item.provider_id,
-                input_variables=dict(item.input_variables_json or {}),
-                output_text=item.output_text,
-                tokens_input=item.tokens_input,
-                tokens_output=item.tokens_output,
-                cost_usd=item.cost_usd,
-                latency_ms=item.latency_ms,
-                temperature=item.temperature,
-                seed=item.seed,
-                created_at=item.created_at,
-            )
-            for item in items
-        ],
+        items=[_generation_response(item) for item in items],
         page=page,
         page_size=page_size,
         total=total,
@@ -536,22 +566,7 @@ def get_generation(
         item = ai_service.get_generation(db, generation_id)
     except ai_service.NotFoundError as exc:
         raise _map_error(exc) from None
-    return AiGenerationResponse(
-        id=item.id,
-        job_id=item.job_id,
-        prompt_version_id=item.prompt_version_id,
-        model_id=item.model_id,
-        provider_id=item.provider_id,
-        input_variables=dict(item.input_variables_json or {}),
-        output_text=item.output_text,
-        tokens_input=item.tokens_input,
-        tokens_output=item.tokens_output,
-        cost_usd=item.cost_usd,
-        latency_ms=item.latency_ms,
-        temperature=item.temperature,
-        seed=item.seed,
-        created_at=item.created_at,
-    )
+    return _generation_response(item)
 
 
 @router.get("/settings", response_model=AiSettingsResponse)

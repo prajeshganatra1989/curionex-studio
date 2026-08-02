@@ -780,7 +780,9 @@ def cancel_job(
     job = get_job(db, job_id)
     if job.status not in {JOB_STATUS_QUEUED, JOB_STATUS_RUNNING}:
         raise ConflictError("Only queued or running jobs can be cancelled.")
-    job.status = JOB_STATUS_CANCELLED
+    job.cancel_requested = True
+    if job.status == JOB_STATUS_QUEUED:
+        job.status = JOB_STATUS_CANCELLED
     db.flush()
     record_audit_event(
         db,
@@ -788,7 +790,7 @@ def cancel_job(
         entity_type=ENTITY_AI_JOB,
         entity_id=job.id,
         actor_user_id=actor.id,
-        metadata={"previous_cancellable": True},
+        metadata={"previous_cancellable": True, "status": job.status},
         ip_address=ip_address,
         user_agent=user_agent,
     )

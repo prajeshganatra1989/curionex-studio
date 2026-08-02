@@ -8,11 +8,14 @@ import {
 
 import {
   activatePromptVersion,
+  applyKnowledgePackAiDraft,
   cancelJob,
   createJob,
+  createKnowledgePackAiDraft,
   createPrompt,
   createPromptVersion,
   deleteProviderCredentials,
+  findGenerationIdForJob,
   getAiSettings,
   getGeneration,
   getJob,
@@ -35,6 +38,7 @@ import type {
   AiGenerationListParams,
   AiJobCreateInput,
   AiJobListParams,
+  AiJobStatus,
   AiPromptCreateInput,
   AiPromptListParams,
   AiPromptUpdateInput,
@@ -43,8 +47,16 @@ import type {
   AiProviderUpdateInput,
   AiSettingsUpdateInput,
   AiModelUpdateInput,
+  KnowledgePackAiDraftApplyInput,
+  KnowledgePackAiDraftCreateInput,
 } from "@/lib/ai/types";
 import { useAuth } from "@/lib/auth/auth-context";
+
+const TERMINAL_JOB_STATUSES = new Set<AiJobStatus>([
+  "completed",
+  "failed",
+  "cancelled",
+]);
 
 export const aiKeys = {
   all: ["ai"] as const,
@@ -310,5 +322,69 @@ export function useAiGeneration(generationId: string | null) {
     queryKey: aiKeys.generation(generationId ?? ""),
     queryFn: () => getGeneration(api, generationId!),
     enabled: status === "authenticated" && Boolean(generationId),
+  });
+}
+
+/** Polls a job's status while queued/running; stops automatically on terminal states. */
+export function usePollAiJob(jobId: string | null) {
+  const { api, status } = useAuth();
+  return useQuery({
+    queryKey: aiKeys.job(jobId ?? ""),
+    queryFn: () => getJob(api, jobId!),
+    enabled: status === "authenticated" && Boolean(jobId),
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (!data || !TERMINAL_JOB_STATUSES.has(data.status)) return 2000;
+      return false;
+    },
+  });
+}
+
+export function useCreateKnowledgePackAiDraft(
+  projectId: string,
+  knowledgePackId: string,
+) {
+  const { api } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: KnowledgePackAiDraftCreateInput) =>
+      createKnowledgePackAiDraft(api, projectId, knowledgePackId, payload),
+    onSuccess: (job) => {
+      qc.setQueryData(aiKeys.job(job.id), job);
+      void qc.invalidateQueries({ queryKey: aiKeys.jobs() });
+    },
+  });
+}
+
+/** Best-effort lookup of the generation produced by a completed job. */
+export function useGenerationForJob(
+  jobId: string | null,
+  options: { enabled?: boolean } = {},
+) {
+  const { api, status } = useAuth();
+  return useQuery({
+    queryKey: [...aiKeys.jobs(), "generation-for-job", jobId ?? ""] as const,
+    queryFn: () => findGenerationIdForJob(api, jobId!),
+    enabled:
+      status === "authenticated" && Boolean(jobId) && (options.enabled ?? true),
+  });
+}
+
+export function useApplyKnowledgePackAiDraft(knowledgePackId: string) {
+  const { api } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      generationId,
+      payload,
+    }: {
+      generationId: string;
+      payload: KnowledgePackAiDraftApplyInput;
+    }) => applyKnowledgePackAiDraft(api, knowledgePackId, generationId, payload),
+    onSuccess: (result) => {
+      void qc.invalidateQueries({
+        queryKey: aiKeys.generation(result.generation_id),
+      });
+    },
   });
 }
