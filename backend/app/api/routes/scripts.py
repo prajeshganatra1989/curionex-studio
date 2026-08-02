@@ -7,10 +7,19 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_permission
+from app.api.routes import ai as ai_routes
 from app.audit.context import extract_request_audit_context
 from app.db.session import get_db
 from app.models.script import Script
 from app.models.user import User
+from app.schemas.ai import (
+    AiGenerationListResponse,
+    AiJobResponse,
+    ScriptAiDraftApply,
+    ScriptAiDraftApplyResponse,
+    ScriptAiDraftCreate,
+    ScriptAiPrerequisitesResponse,
+)
 from app.schemas.script import (
     ScriptCreate,
     ScriptDocumentResponse,
@@ -20,7 +29,7 @@ from app.schemas.script import (
     ScriptResponse,
     ScriptUpdate,
 )
-from app.services import script_service
+from app.services import script_ai_service, script_service
 
 project_scripts_router = APIRouter(
     prefix="/projects/{project_id}/scripts",
@@ -51,14 +60,46 @@ def _script_to_response(script: Script) -> ScriptResponse:
 
 
 def _map_error(exc: Exception) -> HTTPException:
-    if isinstance(exc, script_service.NotFoundError):
+    if isinstance(
+        exc,
+        (
+            script_service.NotFoundError,
+            script_ai_service.NotFoundError,
+        ),
+    ):
         return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
-    if isinstance(exc, script_service.ForbiddenError):
+    if isinstance(
+        exc,
+        (
+            script_service.ForbiddenError,
+            script_ai_service.ForbiddenError,
+        ),
+    ):
         return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
-    if isinstance(exc, script_service.ValidationError):
+    if isinstance(exc, script_ai_service.PrerequisiteError):
+        return HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": exc.code,
+                "missing": list(exc.missing),
+                "message": str(exc),
+            },
+        )
+    if isinstance(
+        exc,
+        (
+            script_service.ValidationError,
+            script_ai_service.ValidationError,
+        ),
+    ):
         return HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
+        )
+    if isinstance(exc, script_ai_service.ConflictError):
+        return HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"message": str(exc), "conflicts": list(exc.conflicts)},
         )
     if isinstance(exc, script_service.ConflictError):
         return HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
@@ -270,3 +311,205 @@ def patch_document(
     ) as exc:
         raise _map_error(exc) from None
     return ScriptDocumentResponse.model_validate(document, from_attributes=True)
+
+
+@scripts_router.post(
+    "/{script_id}/documents/{document_type}/ai-drafts",
+    response_model=AiJobResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def post_script_document_ai_draft(
+    script_id: UUID,
+    document_type: str,
+    payload: ScriptAiDraftCreate,
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_permission("ai.generate"))],
+) -> AiJobResponse:
+    ctx = extract_request_audit_context(request)
+    try:
+        job = script_ai_service.create_script_document_draft_job(
+            db,
+            script_id=script_id,
+            document_type=document_type,
+            actor=current_user,
+            model_id=payload.model_id,
+            language=payload.language,
+            tone=payload.tone,
+            target_duration_seconds=payload.target_duration_seconds,
+            target_words_per_minute=payload.target_words_per_minute,
+            idempotency_key=payload.idempotency_key,
+            execute_now=True,
+            ip_address=ctx.ip_address,
+            user_agent=ctx.user_agent,
+            sleep_fn=lambda _s: None,
+        )
+    except (
+        script_ai_service.NotFoundError,
+        script_ai_service.ForbiddenError,
+        script_ai_service.ValidationError,
+        script_ai_service.PrerequisiteError,
+        script_service.NotFoundError,
+        script_service.ForbiddenError,
+        script_service.ValidationError,
+    ) as exc:
+        raise _map_error(exc) from None
+    return ai_routes._job_response(job, db)
+
+
+@scripts_router.get(
+    "/{script_id}/ai-drafts",
+    response_model=AiGenerationListResponse,
+)
+def get_script_ai_drafts(
+    script_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_permission("ai.view"))],
+    document_type: Annotated[str | None, Query()] = None,
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> AiGenerationListResponse:
+    try:
+        script_service.get_script_for_user(db, script_id, current_user)
+        items, total = script_ai_service.list_script_drafts(
+            db,
+            script_id,
+            document_type=document_type,
+            page=page,
+            page_size=page_size,
+        )
+    except (
+        script_ai_service.NotFoundError,
+        script_ai_service.ForbiddenError,
+        script_ai_service.ValidationError,
+        script_service.NotFoundError,
+        script_service.ForbiddenError,
+        script_service.ValidationError,
+    ) as exc:
+        raise _map_error(exc) from None
+    return AiGenerationListResponse(
+        items=[ai_routes._generation_response(item, db) for item in items],
+        page=page,
+        page_size=page_size,
+        total=total,
+    )
+
+
+@scripts_router.get(
+    "/{script_id}/documents/{document_type}/ai-drafts",
+    response_model=AiGenerationListResponse,
+)
+def get_script_document_ai_drafts(
+    script_id: UUID,
+    document_type: str,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_permission("ai.view"))],
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> AiGenerationListResponse:
+    try:
+        script_service.get_script_for_user(db, script_id, current_user)
+        items, total = script_ai_service.list_script_drafts(
+            db,
+            script_id,
+            document_type=document_type,
+            page=page,
+            page_size=page_size,
+        )
+    except (
+        script_ai_service.NotFoundError,
+        script_ai_service.ForbiddenError,
+        script_ai_service.ValidationError,
+        script_service.NotFoundError,
+        script_service.ForbiddenError,
+        script_service.ValidationError,
+    ) as exc:
+        raise _map_error(exc) from None
+    return AiGenerationListResponse(
+        items=[ai_routes._generation_response(item, db) for item in items],
+        page=page,
+        page_size=page_size,
+        total=total,
+    )
+
+
+@scripts_router.get(
+    "/{script_id}/documents/{document_type}/ai-prerequisites",
+    response_model=ScriptAiPrerequisitesResponse,
+)
+def get_script_document_ai_prerequisites(
+    script_id: UUID,
+    document_type: str,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_permission("scripts.view"))],
+) -> ScriptAiPrerequisitesResponse:
+    try:
+        script = script_service.get_script_for_user(db, script_id, current_user)
+        cleaned = (document_type or "").strip()
+        prerequisites = script_ai_service.get_document_prerequisites(script)
+        if cleaned not in prerequisites:
+            raise script_ai_service.ValidationError(
+                f"Invalid document type: {document_type!r}"
+            )
+        info = prerequisites[cleaned]
+    except (
+        script_ai_service.NotFoundError,
+        script_ai_service.ForbiddenError,
+        script_ai_service.ValidationError,
+        script_service.NotFoundError,
+        script_service.ForbiddenError,
+        script_service.ValidationError,
+    ) as exc:
+        raise _map_error(exc) from None
+    return ScriptAiPrerequisitesResponse(
+        document_type=cleaned,
+        ready=bool(info["ready"]),
+        missing=list(info["missing"]),
+    )
+
+
+@scripts_router.post(
+    "/{script_id}/documents/{document_type}/ai-generations/{generation_id}/apply",
+    response_model=ScriptAiDraftApplyResponse,
+)
+def post_apply_script_ai_generation(
+    script_id: UUID,
+    document_type: str,
+    generation_id: UUID,
+    payload: ScriptAiDraftApply,
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_permission("scripts.update"))],
+) -> ScriptAiDraftApplyResponse:
+    ctx = extract_request_audit_context(request)
+    try:
+        document, generation, stale = (
+            script_ai_service.apply_generation_to_script_document(
+                db,
+                script_id=script_id,
+                document_type=document_type,
+                generation_id=generation_id,
+                conflict_strategy=payload.conflict_strategy,  # type: ignore[arg-type]
+                actor=current_user,
+                ip_address=ctx.ip_address,
+                user_agent=ctx.user_agent,
+            )
+        )
+    except (
+        script_ai_service.NotFoundError,
+        script_ai_service.ForbiddenError,
+        script_ai_service.ValidationError,
+        script_ai_service.ConflictError,
+        script_service.NotFoundError,
+        script_service.ForbiddenError,
+        script_service.ValidationError,
+    ) as exc:
+        raise _map_error(exc) from None
+    return ScriptAiDraftApplyResponse(
+        document=ScriptDocumentResponse.model_validate(
+            document, from_attributes=True
+        ).model_dump(mode="json"),
+        generation_id=generation.id,
+        conflict_strategy=payload.conflict_strategy,
+        stale_input=stale,
+    )

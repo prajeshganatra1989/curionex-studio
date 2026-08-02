@@ -7,13 +7,16 @@ import { useMemo, useState } from "react";
 import { PageContainer, PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
+import { Field, TextInput, TextSelect } from "@/components/ui/field";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { Modal } from "@/components/ui/modal";
 import { Pagination } from "@/components/ui/pagination";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useAiGeneration, useAiGenerations } from "@/lib/ai/hooks";
 import type { AiGeneration } from "@/lib/ai/types";
+import { SCRIPT_AI_DOCUMENT_TYPES } from "@/lib/ai/types";
 import { ApiError } from "@/lib/api/client";
+import { DOCUMENT_BY_TYPE } from "@/lib/scripts/documents";
 import { formatRelativeTime } from "@/lib/utils";
 
 function GenerationsSkeleton() {
@@ -32,19 +35,41 @@ function formatCost(value: number | null): string {
 }
 
 function isApplied(generation: AiGeneration): boolean {
-  return Boolean(generation.applied_sections && generation.applied_sections.length > 0);
+  return Boolean(
+    generation.applied_sections && generation.applied_sections.length > 0,
+  );
+}
+
+function isScriptPurpose(purpose: string | null | undefined): boolean {
+  return Boolean(purpose?.startsWith("script."));
 }
 
 function draftLink(generation: AiGeneration): string | null {
+  if (generation.script_id && generation.project_id) {
+    return `/projects/${generation.project_id}/scripts/${generation.script_id}`;
+  }
   if (!generation.knowledge_pack_id || !generation.project_id) return null;
   return `/projects/${generation.project_id}/knowledge-packs/${generation.knowledge_pack_id}`;
 }
 
+function draftLinkLabel(generation: AiGeneration): string {
+  if (generation.script_id) return "Open Script";
+  return "Open Draft";
+}
+
 function GenerationDetail({ generation }: { generation: AiGeneration }) {
   const link = draftLink(generation);
+  const scriptDocTitle =
+    generation.document_type &&
+    generation.document_type in DOCUMENT_BY_TYPE
+      ? DOCUMENT_BY_TYPE[
+          generation.document_type as keyof typeof DOCUMENT_BY_TYPE
+        ].title
+      : generation.document_type;
   return (
     <div className="space-y-4" data-testid="generation-detail">
-      {generation.purpose === "knowledge_pack.draft" ? (
+      {generation.purpose === "knowledge_pack.draft" ||
+      isScriptPurpose(generation.purpose) ? (
         <div
           className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2.5 text-xs text-foreground"
           role="note"
@@ -79,6 +104,30 @@ function GenerationDetail({ generation }: { generation: AiGeneration }) {
               : "Not applied"}
           </dd>
         </div>
+        {generation.script_id ? (
+          <div>
+            <dt className="text-muted-foreground">Script</dt>
+            <dd className="font-mono text-xs text-foreground">
+              {generation.script_id}
+            </dd>
+          </div>
+        ) : null}
+        {generation.document_type ? (
+          <div>
+            <dt className="text-muted-foreground">Document</dt>
+            <dd className="text-foreground">
+              {scriptDocTitle ?? generation.document_type}
+            </dd>
+          </div>
+        ) : null}
+        {generation.stale_input != null ? (
+          <div>
+            <dt className="text-muted-foreground">Input freshness</dt>
+            <dd className="text-foreground">
+              {generation.stale_input ? "Stale" : "Current"}
+            </dd>
+          </div>
+        ) : null}
         <div>
           <dt className="text-muted-foreground">Tokens in</dt>
           <dd className="tabular-nums text-foreground">
@@ -113,12 +162,28 @@ function GenerationDetail({ generation }: { generation: AiGeneration }) {
         </div>
       </dl>
 
+      {generation.warnings && generation.warnings.length > 0 ? (
+        <div
+          className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2.5 text-sm text-danger"
+          role="alert"
+        >
+          <p className="font-medium">Warnings</p>
+          <ul className="mt-1 list-inside list-disc">
+            {generation.warnings.map((warning, index) => (
+              <li key={index}>{warning}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       {link ? (
         <Link
           href={link}
           className="inline-flex text-sm font-medium text-brand-orange underline"
         >
-          Open Draft in Knowledge Pack
+          {generation.script_id
+            ? "Open Script Workspace"
+            : "Open Draft in Knowledge Pack"}
         </Link>
       ) : null}
 
@@ -149,19 +214,57 @@ export function GenerationsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [projectDraft, setProjectDraft] = useState(
+    () => searchParams.get("project_id") || "",
+  );
+  const [scriptDraft, setScriptDraft] = useState(
+    () => searchParams.get("script_id") || "",
+  );
 
   const page = Number(searchParams.get("page") || "1") || 1;
+  const projectId = searchParams.get("project_id") || "";
+  const scriptId = searchParams.get("script_id") || "";
+  const documentType = searchParams.get("document_type") || "";
+  const purpose = searchParams.get("purpose") || "";
+  const appliedParam = searchParams.get("applied") || "";
 
   const params = useMemo(
     () => ({
       page,
       page_size: 12,
+      project_id: projectId || undefined,
+      script_id: scriptId || undefined,
+      document_type: documentType || undefined,
+      purpose: purpose || undefined,
+      applied:
+        appliedParam === "true"
+          ? true
+          : appliedParam === "false"
+            ? false
+            : undefined,
     }),
-    [page],
+    [page, projectId, scriptId, documentType, purpose, appliedParam],
   );
 
   const { data, isLoading, isError, error, refetch } = useAiGenerations(params);
   const detailQuery = useAiGeneration(selectedId);
+
+  function updateFilters(updates: Record<string, string>) {
+    const q = new URLSearchParams(searchParams.toString());
+    for (const [key, value] of Object.entries(updates)) {
+      if (!value) q.delete(key);
+      else q.set(key, value);
+    }
+    if (!("page" in updates)) q.set("page", "1");
+    router.replace(`/ai/generations?${q.toString()}`);
+  }
+
+  function commitIdFilters() {
+    updateFilters({
+      project_id: projectDraft.trim(),
+      script_id: scriptDraft.trim(),
+    });
+  }
 
   function updatePage(nextPage: number) {
     const q = new URLSearchParams(searchParams.toString());
@@ -188,6 +291,80 @@ export function GenerationsPage() {
           </Link>
         }
       />
+
+      <div
+        className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
+        data-testid="generations-filters"
+      >
+        <Field label="Project ID" htmlFor="gen-filter-project">
+          <TextInput
+            id="gen-filter-project"
+            value={projectDraft}
+            onChange={(e) => setProjectDraft(e.target.value)}
+            onBlur={commitIdFilters}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitIdFilters();
+            }}
+            placeholder="Optional"
+          />
+        </Field>
+        <Field label="Script ID" htmlFor="gen-filter-script">
+          <TextInput
+            id="gen-filter-script"
+            value={scriptDraft}
+            onChange={(e) => setScriptDraft(e.target.value)}
+            onBlur={commitIdFilters}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitIdFilters();
+            }}
+            placeholder="Optional"
+          />
+        </Field>
+        <Field label="Document type" htmlFor="gen-filter-document">
+          <TextSelect
+            id="gen-filter-document"
+            value={documentType}
+            onChange={(e) => updateFilters({ document_type: e.target.value })}
+          >
+            <option value="">All</option>
+            {SCRIPT_AI_DOCUMENT_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {DOCUMENT_BY_TYPE[type].title}
+              </option>
+            ))}
+          </TextSelect>
+        </Field>
+        <Field label="Purpose" htmlFor="gen-filter-purpose">
+          <TextSelect
+            id="gen-filter-purpose"
+            value={purpose}
+            onChange={(e) => updateFilters({ purpose: e.target.value })}
+          >
+            <option value="">All</option>
+            <option value="knowledge_pack.draft">knowledge_pack.draft</option>
+            <option value="script.discovery_brief.draft">
+              script.discovery_brief.draft
+            </option>
+            <option value="script.story_spine.draft">
+              script.story_spine.draft
+            </option>
+            <option value="script.master_script.draft">
+              script.master_script.draft
+            </option>
+          </TextSelect>
+        </Field>
+        <Field label="Applied" htmlFor="gen-filter-applied">
+          <TextSelect
+            id="gen-filter-applied"
+            value={appliedParam}
+            onChange={(e) => updateFilters({ applied: e.target.value })}
+          >
+            <option value="">All</option>
+            <option value="true">Applied</option>
+            <option value="false">Not applied</option>
+          </TextSelect>
+        </Field>
+      </div>
 
       {isLoading ? <GenerationsSkeleton /> : null}
 
@@ -249,8 +426,18 @@ export function GenerationsPage() {
                             {item.purpose}
                           </span>
                         ) : null}
+                        {item.document_type ? (
+                          <span className="rounded-md border border-border bg-surface-hover px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                            {item.document_type}
+                          </span>
+                        ) : null}
                         {isApplied(item) ? (
                           <StatusBadge status="completed" />
+                        ) : null}
+                        {item.stale_input ? (
+                          <span className="rounded-md border border-warning/40 bg-warning/10 px-1.5 py-0.5 text-[11px] text-warning">
+                            Stale input
+                          </span>
                         ) : null}
                       </div>
                       <p className="mt-1 text-xs text-muted-foreground">
@@ -279,7 +466,7 @@ export function GenerationsPage() {
                           href={link}
                           className="text-xs font-medium text-brand-orange underline"
                         >
-                          Open Draft
+                          {draftLinkLabel(item)}
                         </Link>
                       ) : null}
                       <button

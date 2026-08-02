@@ -804,17 +804,47 @@ def list_generations(
     *,
     page: int = 1,
     page_size: int = 20,
+    project_id: UUID | None = None,
+    script_id: UUID | None = None,
+    document_type: str | None = None,
+    purpose: str | None = None,
+    provider_id: UUID | None = None,
+    model_id: UUID | None = None,
+    knowledge_pack_id: UUID | None = None,
+    applied: bool | None = None,
 ) -> tuple[list[AiGeneration], int]:
     page = max(1, page)
     page_size = min(max(1, page_size), 100)
-    total = int(db.scalar(select(func.count()).select_from(AiGeneration)) or 0)
+
+    filters: list = []
+    if project_id is not None:
+        filters.append(AiGeneration.project_id == project_id)
+    if script_id is not None:
+        filters.append(AiGeneration.script_id == script_id)
+    if document_type is not None and document_type.strip():
+        filters.append(AiGeneration.document_type == document_type.strip())
+    if purpose is not None and purpose.strip():
+        filters.append(AiGeneration.purpose == purpose.strip())
+    if provider_id is not None:
+        filters.append(AiGeneration.provider_id == provider_id)
+    if model_id is not None:
+        filters.append(AiGeneration.model_id == model_id)
+    if knowledge_pack_id is not None:
+        filters.append(AiGeneration.knowledge_pack_id == knowledge_pack_id)
+    if applied is True:
+        filters.append(AiGeneration.applied_at.is_not(None))
+    elif applied is False:
+        filters.append(AiGeneration.applied_at.is_(None))
+
+    count_stmt = select(func.count()).select_from(AiGeneration)
+    list_stmt = select(AiGeneration).order_by(AiGeneration.created_at.desc())
+    for condition in filters:
+        count_stmt = count_stmt.where(condition)
+        list_stmt = list_stmt.where(condition)
+
+    total = int(db.scalar(count_stmt) or 0)
     items = list(
-        db.scalars(
-            select(AiGeneration)
-            .order_by(AiGeneration.created_at.desc())
-            .offset((page - 1) * page_size)
-            .limit(page_size)
-        ).all()
+        db.scalars(list_stmt.offset((page - 1) * page_size).limit(page_size)).all()
     )
     return items, total
 
@@ -856,6 +886,24 @@ def update_settings(
         settings_row.default_temperature = data["default_temperature"]
     if "default_max_tokens" in data and data["default_max_tokens"] is not None:
         settings_row.default_max_tokens = data["default_max_tokens"]
+    if "brand_voice" in data:
+        settings_row.brand_voice = data["brand_voice"]
+    if "quality_requirements" in data:
+        settings_row.quality_requirements = data["quality_requirements"]
+    if (
+        "default_target_duration_seconds" in data
+        and data["default_target_duration_seconds"] is not None
+    ):
+        settings_row.default_target_duration_seconds = data[
+            "default_target_duration_seconds"
+        ]
+    if (
+        "default_target_words_per_minute" in data
+        and data["default_target_words_per_minute"] is not None
+    ):
+        settings_row.default_target_words_per_minute = data[
+            "default_target_words_per_minute"
+        ]
     settings_row.updated_by = actor.id
     db.flush()
     record_audit_event(

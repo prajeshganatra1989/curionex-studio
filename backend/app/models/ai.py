@@ -262,6 +262,16 @@ class AiJob(Base):
     cancel_requested: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=text("false")
     )
+    script_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("scripts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    document_type: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    input_fingerprint_json: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB, nullable=True
+    )
     started_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -349,6 +359,19 @@ class AiGeneration(Base):
     applied_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    script_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("scripts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    document_type: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    input_fingerprint_json: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB, nullable=True
+    )
+    warnings_json: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -405,6 +428,14 @@ class AiSettings(Base):
     )
     default_max_tokens: Mapped[int] = mapped_column(
         Integer, nullable=False, default=2048, server_default=text("2048")
+    )
+    brand_voice: Mapped[str | None] = mapped_column(Text, nullable=True)
+    quality_requirements: Mapped[str | None] = mapped_column(Text, nullable=True)
+    default_target_duration_seconds: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=60, server_default=text("60")
+    )
+    default_target_words_per_minute: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=150, server_default=text("150")
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
