@@ -38,6 +38,7 @@ Queue, overview, and metrics only include projects where the caller is a `Projec
 
 ## Related
 
+- [008-production-blueprint-v1.md](./008-production-blueprint-v1.md) — **Production Blueprint v1.0**
 - [007-voice-narration-bible-v1.md](./007-voice-narration-bible-v1.md) — **Voice & Narration Bible v1.0**
 - [README.md](./README.md) — production docs index
 - [002-production-stage-classification.md](002-production-stage-classification.md)
