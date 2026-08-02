@@ -104,3 +104,9 @@ ACTION_KNOWLEDGE_PACK_AI_DRAFT_APPLIED = "knowledge_pack.ai_draft_applied"
 
 ENTITY_PRODUCTION_SETTINGS = "production_settings"
 ACTION_PRODUCTION_SETTINGS_UPDATED = "production.settings_updated"
+
+ENTITY_EDITORIAL_TOPIC = "editorial_topic"
+ACTION_EDITORIAL_TOPIC_CREATED = "editorial_topic.created"
+ACTION_EDITORIAL_TOPIC_UPDATED = "editorial_topic.updated"
+ACTION_EDITORIAL_TOPIC_ARCHIVED = "editorial_topic.archived"
+ACTION_EDITORIAL_TOPIC_PROJECT_LINKED = "editorial_topic.project_linked"

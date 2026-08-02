@@ -18,6 +18,9 @@ export const STATUS_LABELS: Record<string, string> = {
   cancelled: "Cancelled",
   failed: "Failed",
   idea: "Idea",
+  planned: "Planned",
+  project_created: "Project created",
+  published: "Published",
   research: "Research",
   discovery_brief: "Discovery Brief",
   story_spine: "Story Spine",
@@ -43,6 +46,7 @@ export function statusTone(status: string): StatusTone {
     case "completed":
     case "active":
     case "ready_for_version":
+    case "published":
       return "success";
     case "in_review":
     case "pending":
@@ -53,6 +57,8 @@ export function statusTone(status: string): StatusTone {
     case "pending_human_review":
     case "quality_review":
     case "version_created":
+    case "planned":
+    case "project_created":
       return "warning";
     case "rejected":
     case "blocked":
