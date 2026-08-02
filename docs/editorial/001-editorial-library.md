@@ -49,3 +49,4 @@ Create Project also requires `projects.create`.
 - [002-topic-lifecycle.md](./002-topic-lifecycle.md)
 - [003-topic-seeding.md](./003-topic-seeding.md)
 - [004-create-project-from-topic.md](./004-create-project-from-topic.md)
+- [005-editorial-audit.md](./005-editorial-audit.md)
