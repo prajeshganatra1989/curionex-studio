@@ -307,8 +307,69 @@ def test_overview_goals_stage_counts_ai_quality(
     assert quality["stale_reviews"] == 0
     assert quality["high_risk_fact_flags"] == 0
 
+    catalog = body["catalog"]
+    assert catalog["projects"] == 5
+    assert catalog["knowledge_packs"] == 4
+    assert catalog["scripts"] == 4
+    assert catalog["draft_scripts"] == 4
 
-# --- Queue ---
+
+def test_overview_catalog_membership_scoped_and_excludes_archived(
+    client: TestClient,
+    db_session: Session,
+    monkeypatch,
+) -> None:
+    _enable_credentials_key(monkeypatch)
+    owner_a = _owner(db_session, email="owner-a-catalog@example.com")
+    headers_a = _auth_header(owner_a)
+    _setup_openai(client, headers_a)
+
+    owner_b = _owner(db_session, email="owner-b-catalog@example.com")
+    headers_b = _auth_header(owner_b)
+
+    # Owner A: one pack, one draft, one archived (archived excluded from scripts)
+    p_a = _project(client, headers_a, "Owner A Catalog")
+    pack_a = _create_pack(client, headers_a, p_a["id"])
+    draft = _create_script(
+        client, headers_a, p_a["id"], "Draft A", knowledge_pack_id=pack_a["id"]
+    )
+    archived = _create_script(
+        client, headers_a, p_a["id"], "Archived A", knowledge_pack_id=pack_a["id"]
+    )
+    archive = client.delete(f"/scripts/{archived['id']}", headers=headers_a)
+    assert archive.status_code == 200, archive.text
+    assert draft["status"] == "draft"
+
+    # Owner B: separate project must not leak into A
+    p_b = _project(client, headers_b, "Owner B Catalog")
+    pack_b = _create_pack(client, headers_b, p_b["id"])
+    _create_script(
+        client, headers_b, p_b["id"], "Draft B", knowledge_pack_id=pack_b["id"]
+    )
+
+    body_a = client.get("/production/overview", headers=headers_a).json()
+    body_b = client.get("/production/overview", headers=headers_b).json()
+
+    assert body_a["catalog"]["projects"] >= 1
+    assert body_a["catalog"]["knowledge_packs"] == 1
+    assert body_a["catalog"]["scripts"] == 1
+    assert body_a["catalog"]["draft_scripts"] == 1
+
+    assert body_b["catalog"]["projects"] >= 1
+    assert body_b["catalog"]["knowledge_packs"] == 1
+    assert body_b["catalog"]["scripts"] == 1
+    assert body_b["catalog"]["draft_scripts"] == 1
+
+    empty = _owner(db_session, email="empty-catalog@example.com")
+    empty_body = client.get(
+        "/production/overview", headers=_auth_header(empty)
+    ).json()
+    assert empty_body["catalog"] == {
+        "projects": 0,
+        "knowledge_packs": 0,
+        "scripts": 0,
+        "draft_scripts": 0,
+    }
 
 
 def test_queue_pagination_search_stage_filter(

@@ -103,11 +103,21 @@ class ProductionQualitySummary(BaseModel):
     high_risk_fact_flags: int
 
 
+class ProductionCatalogSummary(BaseModel):
+    """Membership-scoped entity totals for Dashboard / overview cards."""
+
+    projects: int
+    knowledge_packs: int
+    scripts: int
+    draft_scripts: int
+
+
 class ProductionOverviewResponse(BaseModel):
     goals: ProductionGoalsSummary
     stage_counts: dict[str, int]
     ai: ProductionAiSummary
     quality: ProductionQualitySummary
+    catalog: ProductionCatalogSummary
 
 
 class ProductionDocumentStatuses(BaseModel):

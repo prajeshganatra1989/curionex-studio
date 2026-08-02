@@ -174,6 +174,12 @@ const sampleOverview: ProductionOverview = {
     stale_reviews: 0,
     high_risk_fact_flags: 0,
   },
+  catalog: {
+    projects: 3,
+    knowledge_packs: 4,
+    scripts: 7,
+    draft_scripts: 2,
+  },
 };
 
 const sampleSettings: ProductionSettings = {

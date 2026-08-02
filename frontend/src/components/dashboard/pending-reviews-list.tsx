@@ -8,17 +8,28 @@ import { formatRelativeTime } from "@/lib/utils";
 type PendingReviewsListProps = {
   reviews: PendingReview[];
   restricted?: boolean;
+  unavailable?: boolean;
 };
 
 export function PendingReviewsList({
   reviews,
   restricted = false,
+  unavailable = false,
 }: PendingReviewsListProps) {
   if (restricted) {
     return (
       <EmptyState
         title="Access restricted"
         description="You do not have permission to view pending approvals."
+      />
+    );
+  }
+
+  if (unavailable) {
+    return (
+      <EmptyState
+        title="Temporarily unavailable"
+        description="Could not load pending reviews. Try Refresh."
       />
     );
   }

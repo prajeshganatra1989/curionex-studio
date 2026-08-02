@@ -6,44 +6,62 @@ type DailyGoalCardProps = {
 };
 
 export function DailyGoalCard({ goal }: DailyGoalCardProps) {
-  const pct = Math.min(
-    100,
-    Math.round((goal.completed / Math.max(goal.target, 1)) * 100),
-  );
+  const live = goal.availability === "live";
+  const pct = live
+    ? Math.min(
+        100,
+        Math.round((goal.completed / Math.max(goal.target, 1)) * 100),
+      )
+    : 0;
   const radius = 36;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (pct / 100) * circumference;
 
   return (
-    <article className="panel relative h-full overflow-hidden p-5">
+    <article
+      className="panel relative h-full overflow-hidden p-5"
+      data-availability={goal.availability}
+      data-testid="daily-goal-card"
+    >
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(232,114,12,0.14),transparent_55%)]"
       />
       <div className="relative flex h-full items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-medium text-muted-foreground">
-              Today&apos;s Goal
-            </h2>
-            {goal.isDemo ? (
-              <span className="rounded-md border border-border bg-surface-elevated px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                Demo
-              </span>
-            ) : null}
-          </div>
-          <p className="mt-2 text-lg font-semibold text-foreground">
-            <span className="tabular-nums">
-              {goal.completed} / {goal.target}
-            </span>
-            {goal.isDemo ? " Videos" : " Approved"}
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">{goal.label}</p>
+          <h2 className="text-sm font-medium text-muted-foreground">
+            Today&apos;s Goal
+          </h2>
+          {live ? (
+            <>
+              <p className="mt-2 text-lg font-semibold text-foreground">
+                <span className="tabular-nums">
+                  {goal.completed} / {goal.target}
+                </span>{" "}
+                Approved
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">{goal.label}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Week {goal.weeklyCompleted}/{goal.weeklyTarget} ·{" "}
+                {goal.remaining} remaining to target
+              </p>
+            </>
+          ) : (
+            <p className="mt-2 text-sm text-muted-foreground">
+              {goal.availability === "restricted"
+                ? "Restricted — production.view required."
+                : "Temporarily unavailable."}
+            </p>
+          )}
         </div>
         <div
           className="relative h-24 w-24 shrink-0"
           role="img"
-          aria-label={`${pct}% of daily goal complete`}
+          aria-label={
+            live
+              ? `${pct}% of daily goal complete`
+              : `Daily goal ${goal.availability}`
+          }
         >
           <svg className="h-full w-full -rotate-90" viewBox="0 0 96 96">
             <circle

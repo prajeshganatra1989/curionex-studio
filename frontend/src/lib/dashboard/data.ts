@@ -1,158 +1,135 @@
 import { ApiError, type ApiClient } from "@/lib/api/client";
 import { listApprovals } from "@/lib/api/approvals";
-import { getProductionOverview } from "@/lib/api/production";
+import {
+  getProductionActivity,
+  getProductionOverview,
+  getProductionQueue,
+} from "@/lib/api/production";
 import { listProjects } from "@/lib/api/projects";
-import type { DashboardData } from "@/lib/dashboard/types";
+import type {
+  DailyGoal,
+  DashboardData,
+  MetricAvailability,
+  MetricValue,
+} from "@/lib/dashboard/types";
 import { initials } from "@/lib/utils";
 
-/**
- * Isolated deterministic mock dashboard payload for modules that are not
- * live yet. Components must not hard-code these values — load via getDashboardData().
- *
- * Live:
- * - Projects metric (list total)
- * - Recent Projects panel
- * - Pending Reviews metric + panel (GET /approvals?status=pending)
- * - Approved scripts, daily goal, needing revision, AI running (production overview)
- *
- * Still demo:
- * - Knowledge Packs / Scripts metrics
- * - Recent Scripts / Activity
- */
-export const DEMO_DASHBOARD: DashboardData = {
-  metrics: {
-    projects: 12,
-    knowledgePacks: 28,
-    scripts: 64,
-    needingRevision: 0,
-    pendingReviews: 5,
-    approvedScripts: 31,
-    aiRunning: 0,
-    isDemo: true,
-    projectsLive: false,
-    pendingReviewsLive: false,
-    productionLive: false,
-  },
-  dailyGoal: {
-    label: "2 videos per day",
-    completed: 1,
-    target: 2,
-    isDemo: true,
-  },
-  recentProjects: [
-    {
-      id: "p1",
-      projectCode: "CRX-0001",
-      name: "Black Holes Explained",
-      category: "Science",
-      status: "active",
-      updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: "p2",
-      projectCode: "CRX-0002",
-      name: "History of Timekeeping",
-      category: "History",
-      status: "in_progress",
-      updatedAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: "p3",
-      projectCode: "CRX-0003",
-      name: "Ocean Currents",
-      category: "Earth",
-      status: "draft",
-      updatedAt: new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString(),
-    },
-  ],
-  recentProjectsLive: false,
-  recentScripts: [
-    {
-      id: "s1",
-      title: "Event Horizon Walkthrough",
-      projectCode: "CRX-0001",
-      status: "in_review",
-      updatedAt: new Date(Date.now() - 40 * 60 * 1000).toISOString(),
-    },
-    {
-      id: "s2",
-      title: "Atomic Clocks Story Spine",
-      projectCode: "CRX-0002",
-      status: "draft",
-      updatedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: "s3",
-      title: "Gulf Stream Master Script",
-      projectCode: "CRX-0003",
-      status: "approved",
-      updatedAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
-    },
-  ],
-  pendingReviews: [
-    {
-      id: "r1",
-      title: "Event Horizon Walkthrough",
-      versionNumber: 3,
-      status: "pending",
-      reviewerInitials: "PG",
-      updatedAt: new Date(Date.now() - 55 * 60 * 1000).toISOString(),
-      projectCode: "CRX-0001",
-      scriptCode: "CRX-0001-S01",
-    },
-    {
-      id: "r2",
-      title: "Supernova Remnants",
-      versionNumber: 1,
-      status: "pending",
-      reviewerInitials: null,
-      updatedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-      projectCode: "CRX-0002",
-      scriptCode: "CRX-0002-S01",
-    },
-  ],
-  pendingReviewsLive: false,
-  pendingReviewsRestricted: false,
-  recentActivity: [
-    {
-      id: "a1",
-      action: "script.document_updated",
-      summary: "Story Spine updated",
-      actorName: "You",
-      createdAt: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
-    },
-    {
-      id: "a2",
-      action: "approval.approved",
-      summary: "Script approved",
-      actorName: "Reviewer",
-      createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: "a3",
-      action: "content_version.created",
-      summary: "Version created",
-      actorName: "You",
-      createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: "a4",
-      action: "knowledge_pack.section_updated",
-      summary: "Knowledge Pack edited",
-      actorName: "You",
-      createdAt: new Date(Date.now() - 9 * 60 * 60 * 1000).toISOString(),
-    },
-  ],
-  activityRestricted: false,
+function live(value: number): MetricValue {
+  return { value, availability: "live" };
+}
+
+function unavailable(): MetricValue {
+  return { value: null, availability: "unavailable" };
+}
+
+function restricted(): MetricValue {
+  return { value: null, availability: "restricted" };
+}
+
+function classifyError(error: unknown): MetricAvailability {
+  if (error instanceof ApiError && error.status === 403) return "restricted";
+  return "unavailable";
+}
+
+const UNAVAILABLE_GOAL: DailyGoal = {
+  label: "Approved scripts per day",
+  completed: 0,
+  target: 0,
+  remaining: 0,
+  completionPercent: 0,
+  weeklyCompleted: 0,
+  weeklyTarget: 0,
+  availability: "unavailable",
 };
 
+/**
+ * Live Dashboard adapter — never returns demo/mock rows or silent fallback counts.
+ * Failure → unavailable/restricted (value null). Valid API zero → 0.
+ */
 export async function getDashboardData(api: ApiClient): Promise<DashboardData> {
-  const projects = await listProjects(api, { page: 1, page_size: 5 });
+  let projectsMetric: MetricValue = unavailable();
+  let recentProjects: DashboardData["recentProjects"] = [];
+  let recentProjectsAvailability: MetricAvailability = "unavailable";
 
-  let pendingReviews = DEMO_DASHBOARD.pendingReviews;
-  let pendingReviewsLive = false;
-  let pendingReviewsRestricted = false;
-  let pendingReviewsTotal = DEMO_DASHBOARD.metrics.pendingReviews;
+  try {
+    const projects = await listProjects(api, { page: 1, page_size: 5 });
+    projectsMetric = live(projects.total);
+    recentProjects = projects.items.map((project) => ({
+      id: project.id,
+      projectCode: project.project_code,
+      name: project.name,
+      category: project.category?.name ?? null,
+      status: project.status,
+      updatedAt: project.updated_at,
+    }));
+    recentProjectsAvailability = "live";
+  } catch (error) {
+    recentProjectsAvailability = classifyError(error);
+    projectsMetric =
+      recentProjectsAvailability === "restricted" ? restricted() : unavailable();
+  }
+
+  let knowledgePacks = unavailable();
+  let scripts = unavailable();
+  let draftScripts = unavailable();
+  let needingRevision = unavailable();
+  let pendingReviewsMetric = unavailable();
+  let approvedScripts = unavailable();
+  let aiRunning = unavailable();
+  let aiFailed = unavailable();
+  let averageQualityScore = unavailable();
+  let staleQualityReviews = unavailable();
+  let dailyGoal: DailyGoal = { ...UNAVAILABLE_GOAL };
+
+  try {
+    const overview = await getProductionOverview(api);
+    knowledgePacks = live(overview.catalog.knowledge_packs);
+    scripts = live(overview.catalog.scripts);
+    draftScripts = live(overview.catalog.draft_scripts);
+    needingRevision = live(overview.quality.scripts_needing_revision);
+    pendingReviewsMetric = live(
+      overview.stage_counts.pending_human_review ?? 0,
+    );
+    approvedScripts = live(overview.goals.approved_total);
+    aiRunning = live(overview.ai.running);
+    aiFailed = live(overview.ai.failed);
+    averageQualityScore = {
+      value: overview.quality.average_current_score,
+      availability: "live",
+    };
+    staleQualityReviews = live(overview.quality.stale_reviews);
+    dailyGoal = {
+      label: `${overview.goals.daily_target} approved scripts per day`,
+      completed: overview.goals.approved_today,
+      target: overview.goals.daily_target,
+      remaining: overview.goals.remaining,
+      completionPercent: overview.goals.completion_percent,
+      weeklyCompleted: overview.goals.approved_this_week,
+      weeklyTarget: overview.goals.weekly_target,
+      availability: "live",
+    };
+  } catch (error) {
+    const availability = classifyError(error);
+    const empty =
+      availability === "restricted" ? restricted() : unavailable();
+    knowledgePacks = empty;
+    scripts = empty;
+    draftScripts = empty;
+    needingRevision = empty;
+    pendingReviewsMetric = empty;
+    approvedScripts = empty;
+    aiRunning = empty;
+    aiFailed = empty;
+    averageQualityScore = empty;
+    staleQualityReviews = empty;
+    dailyGoal = {
+      ...UNAVAILABLE_GOAL,
+      availability,
+    };
+  }
+
+  let pendingReviews: DashboardData["pendingReviews"] = [];
+  let pendingReviewsAvailability: MetricAvailability = "unavailable";
 
   try {
     const approvals = await listApprovals(api, {
@@ -176,67 +153,79 @@ export async function getDashboardData(api: ApiClient): Promise<DashboardData> {
       projectCode: item.project.project_code,
       scriptCode: item.script?.script_code ?? null,
     }));
-    pendingReviewsTotal = approvals.total;
-    pendingReviewsLive = true;
+    pendingReviewsAvailability = "live";
   } catch (error) {
-    if (error instanceof ApiError && error.status === 403) {
-      pendingReviews = [];
-      pendingReviewsRestricted = true;
-      pendingReviewsTotal = 0;
-      pendingReviewsLive = true;
-    }
+    pendingReviewsAvailability = classifyError(error);
   }
 
-  let approvedScripts = DEMO_DASHBOARD.metrics.approvedScripts;
-  let needingRevision = DEMO_DASHBOARD.metrics.needingRevision;
-  let aiRunning = DEMO_DASHBOARD.metrics.aiRunning;
-  let productionLive = false;
-  let dailyGoal = DEMO_DASHBOARD.dailyGoal;
+  let recentScripts: DashboardData["recentScripts"] = [];
+  let recentScriptsAvailability: MetricAvailability = "unavailable";
 
   try {
-    const overview = await getProductionOverview(api);
-    approvedScripts = overview.goals.approved_total;
-    needingRevision = overview.quality.scripts_needing_revision;
-    aiRunning = overview.ai.running;
-    productionLive = true;
-    dailyGoal = {
-      label: `${overview.goals.daily_target} approved scripts per day`,
-      completed: overview.goals.approved_today,
-      target: overview.goals.daily_target,
-      isDemo: false,
-    };
-  } catch {
-    // Keep demo values when production.view is unavailable.
+    const queue = await getProductionQueue(api, {
+      page: 1,
+      page_size: 5,
+      sort: "updated_at",
+    });
+    recentScripts = queue.items
+      .filter((item) => item.script_id && item.script_title)
+      .map((item) => ({
+        id: item.script_id as string,
+        projectId: item.project_id,
+        title: item.script_title as string,
+        projectCode: item.project_code,
+        status: item.script_status ?? item.production_stage,
+        updatedAt: item.updated_at,
+      }));
+    recentScriptsAvailability = "live";
+  } catch (error) {
+    recentScriptsAvailability = classifyError(error);
   }
 
-  const metricsStillDemo = true; // KP / Scripts remain demo-backed.
+  let recentActivity: DashboardData["recentActivity"] = [];
+  let recentActivityAvailability: MetricAvailability = "unavailable";
+
+  try {
+    const activity = await getProductionActivity(api, 8);
+    if (activity.restricted) {
+      recentActivityAvailability = "restricted";
+      recentActivity = [];
+    } else {
+      recentActivityAvailability = "live";
+      recentActivity = activity.items.map((item) => ({
+        id: item.id,
+        action: item.action,
+        summary: item.action_label,
+        actorName: item.entity_type.replaceAll("_", " "),
+        createdAt: item.created_at,
+      }));
+    }
+  } catch (error) {
+    recentActivityAvailability = classifyError(error);
+  }
 
   return {
-    ...DEMO_DASHBOARD,
     metrics: {
-      ...DEMO_DASHBOARD.metrics,
-      projects: projects.total,
-      projectsLive: true,
-      pendingReviews: pendingReviewsTotal,
-      pendingReviewsLive,
-      approvedScripts,
+      projects: projectsMetric,
+      knowledgePacks,
+      scripts,
+      draftScripts,
       needingRevision,
+      pendingReviews: pendingReviewsMetric,
+      approvedScripts,
       aiRunning,
-      productionLive,
-      isDemo: metricsStillDemo,
+      aiFailed,
+      averageQualityScore,
+      staleQualityReviews,
     },
     dailyGoal,
-    recentProjects: projects.items.map((project) => ({
-      id: project.id,
-      projectCode: project.project_code,
-      name: project.name,
-      category: project.category?.name ?? null,
-      status: project.status,
-      updatedAt: project.updated_at,
-    })),
-    recentProjectsLive: true,
+    recentProjects,
+    recentProjectsAvailability,
+    recentScripts,
+    recentScriptsAvailability,
     pendingReviews,
-    pendingReviewsLive,
-    pendingReviewsRestricted,
+    pendingReviewsAvailability,
+    recentActivity,
+    recentActivityAvailability,
   };
 }

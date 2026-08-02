@@ -1,38 +1,61 @@
 # Dashboard
 
-## Layout
+## Role vs Production Mode
 
-1. Time-aware greeting with authenticated first name
-2. Today’s Goal card (progress ring)
-3. Metric cards (Projects, Knowledge Packs, Scripts, Drafts, Pending Reviews, Approved)
-4. Recent Projects / Recent Scripts
-5. Pending Reviews / Recent Activity
+| Surface | Job |
+|---------|-----|
+| **Dashboard** (`/dashboard`) | Live home snapshot after login |
+| **Production** (`/production`) | Full pipeline queue, stages, filters, next actions |
 
-## Metrics & goal
+Both use real backend data. Prefer fewer accurate cards over fake filler.
 
-Business target: **2 videos per day**.
+## Live sources
 
 Dashboard data loads through `src/lib/dashboard/data.ts` via `getDashboardData(api)`.
 
-## Live vs mock (Sprint 2)
+| Item | Source | Notes |
+|------|--------|-------|
+| Projects metric + Recent Projects | `GET /projects` (`total` + first page) | Membership-scoped list total |
+| Knowledge Packs / Scripts / Draft Scripts | `GET /production/overview` → `catalog` | Membership-scoped SQL counts |
+| Approved Scripts / daily & weekly goals / remaining | `GET /production/overview` → `goals` | |
+| Needs Revision / avg quality / stale reviews | `GET /production/overview` → `quality` | |
+| AI running / failed | `GET /production/overview` → `ai` | |
+| Pending Reviews metric | `GET /production/overview` → `stage_counts.pending_human_review` | |
+| Pending Reviews list | `GET /approvals?status=pending` | Separate list permission |
+| Recent Scripts | `GET /production/queue?sort=updated_at&page_size=5` | Script rows only |
+| Recent Activity | `GET /production/activity` | `restricted: true` without `audit.view` |
 
-| Panel | Source | Indicator |
-|-------|--------|-----------|
-| Projects metric | Live — `GET /projects` `total` | No Demo badge |
-| Recent Projects | Live — first page of `GET /projects` | Live |
-| Pending Reviews metric + panel | Live — `GET /approvals?status=pending` | Live (403 → restricted empty state) |
-| Knowledge Packs / Scripts / Drafts / Approved metrics | Demo adapter | Demo per card |
-| Daily goal | Demo adapter | Demo |
-| Recent Scripts | Demo adapter | Demo |
-| Activity | Demo adapter | Demo |
+## Availability policy
 
-Greeting shows **Mixed live + demo** while non-project modules remain mocked.
+Each metric is one of:
 
-Components never hard-code demo numbers. Live project rows link to
-`/projects/{id}`.
+- **live** — backend returned a value (including `0` or `null` for average quality)
+- **unavailable** — request failed (network / 5xx); UI shows “Unavailable”, never a silent demo number
+- **restricted** — `403` or activity `restricted: true`; UI shows “Restricted”
 
-## Future
+Failure is **never** coerced to `0`. Valid API zero is shown as `0`.
 
-- Aggregation API for remaining metrics
-- Publishing tracker for daily goal
-- Audit feed (`audit.view`) for activity — restricted empty state when missing
+There is **no demo/mock Dashboard payload** in production code and no global “Demo data” badge.
+
+## Refresh
+
+The Dashboard **Refresh** control invalidates:
+
+- `["dashboard"]`
+- production overview + queue keys
+- project list keys
+- review list keys
+
+then refetches the Dashboard query. Prior live data may remain visible while refreshing.
+
+## Permissions
+
+- `401` → existing auth flow
+- Missing `production.view` → production-backed metrics/panels restricted or unavailable
+- Missing approval list permission → pending list restricted (overview pending metric may still be live)
+- Missing `audit.view` → activity restricted (empty items + flag)
+
+## Related
+
+- Production overview: [../production/001-production-mode.md](../production/001-production-mode.md)
+- Production metrics: [../production/005-production-metrics.md](../production/005-production-metrics.md)

@@ -1,29 +1,34 @@
+/** Metric availability — never mix failure with a silent zero. */
+export type MetricAvailability = "live" | "unavailable" | "restricted";
+
+export type MetricValue = {
+  value: number | null;
+  availability: MetricAvailability;
+};
+
 export type DashboardMetrics = {
-  projects: number;
-  knowledgePacks: number;
-  scripts: number;
-  /** Scripts needing revision from production overview (live when productionLive). */
-  needingRevision: number;
-  pendingReviews: number;
-  approvedScripts: number;
-  /** AI jobs currently running from production overview. */
-  aiRunning: number;
-  /** True when any metric cards still use demo values. */
-  isDemo: boolean;
-  /** True when the Projects metric comes from GET /projects total. */
-  projectsLive: boolean;
-  /** True when Pending Reviews metric comes from GET /approvals total. */
-  pendingReviewsLive: boolean;
-  /** True when approved / needing revision / AI running come from production overview. */
-  productionLive: boolean;
+  projects: MetricValue;
+  knowledgePacks: MetricValue;
+  scripts: MetricValue;
+  draftScripts: MetricValue;
+  needingRevision: MetricValue;
+  pendingReviews: MetricValue;
+  approvedScripts: MetricValue;
+  aiRunning: MetricValue;
+  aiFailed: MetricValue;
+  averageQualityScore: MetricValue;
+  staleQualityReviews: MetricValue;
 };
 
 export type DailyGoal = {
   label: string;
   completed: number;
   target: number;
-  /** When true, values are demo/mock — not live backend data. */
-  isDemo: boolean;
+  remaining: number;
+  completionPercent: number;
+  weeklyCompleted: number;
+  weeklyTarget: number;
+  availability: MetricAvailability;
 };
 
 export type RecentProject = {
@@ -37,6 +42,7 @@ export type RecentProject = {
 
 export type RecentScript = {
   id: string;
+  projectId: string;
   title: string;
   projectCode: string;
   status: string;
@@ -62,15 +68,17 @@ export type RecentActivity = {
   createdAt: string;
 };
 
+export type PanelAvailability = MetricAvailability | "empty";
+
 export type DashboardData = {
   metrics: DashboardMetrics;
   dailyGoal: DailyGoal;
   recentProjects: RecentProject[];
-  recentProjectsLive: boolean;
+  recentProjectsAvailability: MetricAvailability;
   recentScripts: RecentScript[];
+  recentScriptsAvailability: MetricAvailability;
   pendingReviews: PendingReview[];
-  pendingReviewsLive: boolean;
-  pendingReviewsRestricted: boolean;
+  pendingReviewsAvailability: MetricAvailability;
   recentActivity: RecentActivity[];
-  activityRestricted: boolean;
+  recentActivityAvailability: MetricAvailability;
 };
