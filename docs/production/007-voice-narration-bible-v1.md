@@ -586,6 +586,7 @@ When Curionex expands languages:
 
 ### Related documents
 
+- [008-production-blueprint-v1.md](./008-production-blueprint-v1.md) — Production Blueprint v1.0  
 - [../editorial/020-editorial-bible-v1.md](../editorial/020-editorial-bible-v1.md)  
 - [../editorial/008-brand-voice.md](../editorial/008-brand-voice.md)  
 - [../ai/016-curionex-brand-voice.md](../ai/016-curionex-brand-voice.md)  

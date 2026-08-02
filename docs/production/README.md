@@ -1,14 +1,15 @@
 # Curionex Production Documentation
 
-Guides for Production Mode, goals, sessions—and how Curionex **sounds**.
+Guides for Production Mode, goals, sessions—and how Curionex **looks** and **sounds**.
 
 ## Start here
 
 | Doc | Role |
 |-----|------|
+| **[008-production-blueprint-v1.md](./008-production-blueprint-v1.md)** | **Production Blueprint v1.0** — timeline, picture, motion, color, type, B-roll, mix, export QA |
 | **[007-voice-narration-bible-v1.md](./007-voice-narration-bible-v1.md)** | **Voice & Narration Bible v1.0** — sonic brand, pacing, personas, ElevenLabs guidance, VO QA |
+| [../editorial/020-editorial-bible-v1.md](../editorial/020-editorial-bible-v1.md) | **Editorial Bible v1.0** — what we say, integrity, Founding Collection |
 | [001-production-mode.md](./001-production-mode.md) | Production Mode overview |
-| [../editorial/020-editorial-bible-v1.md](../editorial/020-editorial-bible-v1.md) | Editorial Bible v1.0 (what we say) |
 
 ## Index
 
@@ -20,6 +21,13 @@ Guides for Production Mode, goals, sessions—and how Curionex **sounds**.
 | 004 | [Production Goals](./004-production-goals.md) |
 | 005 | [Production Metrics](./005-production-metrics.md) |
 | 006 | [Production Session](./006-production-session.md) |
-| 007 | [**Voice & Narration Bible v1.0**](./007-voice-narration-bible-v1.md) |
+| 007 | [Voice & Narration Bible v1.0](./007-voice-narration-bible-v1.md) |
+| 008 | [**Production Blueprint v1.0**](./008-production-blueprint-v1.md) |
 
-**Split of responsibility:** Editorial Bible = script craft & integrity. Voice & Narration Bible = performance & sonic identity.
+## Trinity
+
+| Handbook | Governs |
+|----------|---------|
+| Editorial Bible | Script craft & scientific integrity |
+| Voice & Narration Bible | Performance & sonic identity |
+| Production Blueprint | Picture, motion, mix & delivery |
