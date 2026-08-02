@@ -17,6 +17,8 @@ from app.audit.actions import (
 )
 from app.editorial.constants import (
     CREATE_PROJECT_ALLOWED_STATUSES,
+    PRODUCTION_WAVES,
+    TOPIC_PRIORITIES,
     TOPIC_STATUS_ARCHIVED,
     TOPIC_STATUS_IDEA,
     TOPIC_STATUS_IN_PROGRESS,
@@ -106,6 +108,8 @@ def list_topics(
     status: str | None = None,
     category: str | None = None,
     difficulty: str | None = None,
+    priority: str | None = None,
+    production_wave: int | None = None,
     min_evergreen_score: int | None = None,
     search: str | None = None,
     include_archived: bool = False,
@@ -128,6 +132,17 @@ def list_topics(
         filters.append(EditorialTopic.category == category.strip())
     if difficulty:
         filters.append(EditorialTopic.difficulty == difficulty)
+    if priority:
+        cleaned_priority = priority.strip().upper()
+        if cleaned_priority not in TOPIC_PRIORITIES:
+            raise ValidationError(
+                f"priority must be one of: {', '.join(sorted(TOPIC_PRIORITIES))}"
+            )
+        filters.append(EditorialTopic.priority == cleaned_priority)
+    if production_wave is not None:
+        if production_wave not in PRODUCTION_WAVES:
+            raise ValidationError("production_wave must be 1, 2, 3, or 4")
+        filters.append(EditorialTopic.production_wave == production_wave)
     if min_evergreen_score is not None:
         if min_evergreen_score < 0 or min_evergreen_score > 100:
             raise ValidationError("min_evergreen_score must be between 0 and 100")
@@ -155,6 +170,10 @@ def list_topics(
         order = EditorialTopic.evergreen_score.desc()
     elif sort_key == "curiosity_desc":
         order = EditorialTopic.curiosity_score.desc()
+    elif sort_key == "priority_asc":
+        order = EditorialTopic.priority.asc()
+    elif sort_key == "wave_asc":
+        order = EditorialTopic.production_wave.asc()
     elif sort_key == "created_at_desc":
         order = EditorialTopic.created_at.desc()
     else:
@@ -203,6 +222,8 @@ def create_topic(
         notes=payload.notes,
         is_featured=payload.is_featured,
         published_video_url=payload.published_video_url,
+        priority=payload.priority,
+        production_wave=payload.production_wave,
     )
     db.add(topic)
     try:
@@ -257,6 +278,8 @@ def update_topic(
         "notes",
         "is_featured",
         "published_video_url",
+        "priority",
+        "production_wave",
     ):
         if field in data:
             setattr(topic, field, data[field])
@@ -376,12 +399,57 @@ def topic_summary(db: Session) -> dict[str, int]:
     published = counts.get(TOPIC_STATUS_PUBLISHED, 0)
     project_created = counts.get(TOPIC_STATUS_PROJECT_CREATED, 0)
     total_active = sum(counts.values())
+
+    remaining_statuses = (
+        TOPIC_STATUS_IDEA,
+        TOPIC_STATUS_PLANNED,
+        TOPIC_STATUS_IN_PROGRESS,
+    )
+    wave_remaining: dict[int, int] = {}
+    for wave in (1, 2, 3, 4):
+        wave_remaining[wave] = int(
+            db.scalar(
+                select(func.count())
+                .select_from(EditorialTopic)
+                .where(
+                    EditorialTopic.production_wave == wave,
+                    EditorialTopic.status.in_(remaining_statuses),
+                )
+            )
+            or 0
+        )
+
+    current_wave = 1
+    for wave in (1, 2, 3, 4):
+        if wave_remaining[wave] > 0:
+            current_wave = wave
+            break
+    else:
+        current_wave = 4
+
+    approved_in_current_wave = int(
+        db.scalar(
+            select(func.count())
+            .select_from(EditorialTopic)
+            .where(
+                EditorialTopic.production_wave == current_wave,
+                EditorialTopic.status == TOPIC_STATUS_PROJECT_CREATED,
+            )
+        )
+        or 0
+    )
+
     return {
         "available": available,
         "in_progress": in_progress,
         "published": published,
         "project_created": project_created,
         "total_active": total_active,
+        "wave_1_remaining": wave_remaining[1],
+        "wave_2_remaining": wave_remaining[2],
+        "current_wave": current_wave,
+        "approved_in_current_wave": approved_in_current_wave,
+        "remaining_in_wave": wave_remaining[current_wave],
     }
 
 

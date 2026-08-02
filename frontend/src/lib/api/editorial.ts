@@ -34,6 +34,8 @@ export function listEditorialTopics(
       status: params.status,
       category: params.category,
       difficulty: params.difficulty,
+      priority: params.priority,
+      production_wave: params.production_wave,
       min_evergreen_score: params.min_evergreen_score,
       search: params.search,
       include_archived: params.include_archived,

@@ -9,10 +9,14 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.editorial.constants import (
+    DEFAULT_PRODUCTION_WAVE,
     DEFAULT_TOPIC_DIFFICULTY,
+    DEFAULT_TOPIC_PRIORITY,
     DEFAULT_TOPIC_STATUS,
     DEFAULT_TOPIC_VIRAL,
+    PRODUCTION_WAVES,
     TOPIC_DIFFICULTIES,
+    TOPIC_PRIORITIES,
     TOPIC_STATUSES,
     TOPIC_VIRAL_POTENTIALS,
 )
@@ -44,6 +48,8 @@ class EditorialTopicCreate(BaseModel):
     notes: str | None = Field(default=None, max_length=10000)
     is_featured: bool = False
     published_video_url: str | None = Field(default=None, max_length=500)
+    priority: str = DEFAULT_TOPIC_PRIORITY
+    production_wave: int = Field(default=DEFAULT_PRODUCTION_WAVE, ge=1, le=4)
 
     @field_validator("title", "category")
     @classmethod
@@ -103,6 +109,23 @@ class EditorialTopicCreate(BaseModel):
             )
         return value
 
+    @field_validator("priority")
+    @classmethod
+    def validate_priority(cls, value: str) -> str:
+        cleaned = value.strip().upper()
+        if cleaned not in TOPIC_PRIORITIES:
+            raise ValueError(
+                f"priority must be one of: {', '.join(sorted(TOPIC_PRIORITIES))}"
+            )
+        return cleaned
+
+    @field_validator("production_wave")
+    @classmethod
+    def validate_wave(cls, value: int) -> int:
+        if value not in PRODUCTION_WAVES:
+            raise ValueError("production_wave must be 1, 2, 3, or 4")
+        return value
+
 
 class EditorialTopicUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=240)
@@ -120,6 +143,8 @@ class EditorialTopicUpdate(BaseModel):
     notes: str | None = Field(default=None, max_length=10000)
     is_featured: bool | None = None
     published_video_url: str | None = Field(default=None, max_length=500)
+    priority: str | None = None
+    production_wave: int | None = Field(default=None, ge=1, le=4)
 
     @field_validator("title", "category")
     @classmethod
@@ -187,6 +212,27 @@ class EditorialTopicUpdate(BaseModel):
             )
         return value
 
+    @field_validator("priority")
+    @classmethod
+    def validate_priority(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip().upper()
+        if cleaned not in TOPIC_PRIORITIES:
+            raise ValueError(
+                f"priority must be one of: {', '.join(sorted(TOPIC_PRIORITIES))}"
+            )
+        return cleaned
+
+    @field_validator("production_wave")
+    @classmethod
+    def validate_wave(cls, value: int | None) -> int | None:
+        if value is None:
+            return None
+        if value not in PRODUCTION_WAVES:
+            raise ValueError("production_wave must be 1, 2, 3, or 4")
+        return value
+
 
 class LinkedProjectSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -217,6 +263,8 @@ class EditorialTopicResponse(BaseModel):
     linked_project_id: UUID | None
     published_video_url: str | None
     is_featured: bool
+    priority: str
+    production_wave: int
     created_at: datetime
     updated_at: datetime
     linked_project: LinkedProjectSummary | None = None
@@ -282,3 +330,8 @@ class EditorialTopicSummaryResponse(BaseModel):
     published: int
     project_created: int
     total_active: int
+    wave_1_remaining: int
+    wave_2_remaining: int
+    current_wave: int
+    approved_in_current_wave: int
+    remaining_in_wave: int

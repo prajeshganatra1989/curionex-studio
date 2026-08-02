@@ -185,13 +185,59 @@ def test_editorial_permissions(client: TestClient, db_session: Session) -> None:
 
 def test_seed_editorial_topics_idempotent(db_session: Session) -> None:
     first = seed_topics(db_session)
-    assert first["created"] == 100
-    assert first["skipped"] == 0
+    assert first["total_seed"] == 100
+    assert first["created"] + first["updated"] == 100
     second = seed_topics(db_session)
     assert second["created"] == 0
-    assert second["skipped"] == 100
-    assert db_session.query(EditorialTopic).count() == 100
+    assert second["updated"] == 100
+    active = (
+        db_session.query(EditorialTopic)
+        .filter(EditorialTopic.status != "archived")
+        .filter(EditorialTopic.source == "curionex-production-catalog-v1")
+        .count()
+    )
+    assert active == 100
     assert len(SEED_TOPICS) == 100
+    sample = (
+        db_session.query(EditorialTopic)
+        .filter(EditorialTopic.slug == SEED_TOPICS[0]["slug"])
+        .one()
+    )
+    assert sample.priority in {"A", "B", "C"}
+    assert sample.production_wave in {1, 2, 3, 4}
+    assert all("priority" in item and "production_wave" in item for item in SEED_TOPICS)
+    # Every catalog topic must have a priority; waves cover 1–4.
+    waves = {
+        row[0]
+        for row in db_session.query(EditorialTopic.production_wave)
+        .filter(EditorialTopic.status != "archived")
+        .filter(EditorialTopic.source == "curionex-production-catalog-v1")
+        .distinct()
+    }
+    assert waves == {1, 2, 3, 4}
+
+
+def test_priority_and_wave_filters(client: TestClient, db_session: Session) -> None:
+    owner = _owner(db_session)
+    headers = _auth_header(owner)
+    created = client.post(
+        "/editorial-topics",
+        headers=headers,
+        json=_topic_payload(
+            title="Wave One Priority A Topic",
+            priority="A",
+            production_wave=1,
+            slug="wave-one-priority-a",
+        ),
+    )
+    assert created.status_code == 201, created.text
+    listed = client.get(
+        "/editorial-topics?priority=A&production_wave=1&sort=wave_asc",
+        headers=headers,
+    )
+    assert listed.status_code == 200, listed.text
+    assert listed.json()["total"] >= 1
+    assert any(item["slug"] == "wave-one-priority-a" for item in listed.json()["items"])
 
 
 def test_summary_counts(client: TestClient, db_session: Session) -> None:
@@ -200,13 +246,22 @@ def test_summary_counts(client: TestClient, db_session: Session) -> None:
     client.post(
         "/editorial-topics",
         headers=headers,
-        json=_topic_payload(title="Available Idea One", status="idea"),
+        json=_topic_payload(
+            title="Available Idea One",
+            status="idea",
+            priority="A",
+            production_wave=1,
+        ),
     )
     client.post(
         "/editorial-topics",
         headers=headers,
         json=_topic_payload(
-            title="Planned Idea Two", status="planned", slug="planned-idea-two"
+            title="Planned Idea Two",
+            status="planned",
+            slug="planned-idea-two",
+            priority="A",
+            production_wave=1,
         ),
     )
     summary = client.get("/editorial-topics/summary", headers=headers)
@@ -214,3 +269,8 @@ def test_summary_counts(client: TestClient, db_session: Session) -> None:
     body = summary.json()
     assert body["available"] >= 2
     assert body["total_active"] >= 2
+    assert body["wave_1_remaining"] >= 2
+    assert body["current_wave"] == 1
+    assert body["remaining_in_wave"] >= 2
+    assert "approved_in_current_wave" in body
+    assert "wave_2_remaining" in body

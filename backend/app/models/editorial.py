@@ -21,7 +21,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.editorial.constants import (
+    DEFAULT_PRODUCTION_WAVE,
     DEFAULT_TOPIC_DIFFICULTY,
+    DEFAULT_TOPIC_PRIORITY,
     DEFAULT_TOPIC_STATUS,
     DEFAULT_TOPIC_VIRAL,
 )
@@ -98,6 +100,20 @@ class EditorialTopic(Base):
         nullable=False,
         default=False,
         server_default=text("false"),
+    )
+    priority: Mapped[str] = mapped_column(
+        String(1),
+        nullable=False,
+        default=DEFAULT_TOPIC_PRIORITY,
+        server_default=text(f"'{DEFAULT_TOPIC_PRIORITY}'"),
+        index=True,
+    )
+    production_wave: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=DEFAULT_PRODUCTION_WAVE,
+        server_default=text(str(DEFAULT_PRODUCTION_WAVE)),
+        index=True,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

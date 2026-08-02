@@ -15,6 +15,12 @@ export type TopicDifficulty = (typeof TOPIC_DIFFICULTIES)[number];
 export const TOPIC_VIRAL = ["low", "medium", "high"] as const;
 export type TopicViralPotential = (typeof TOPIC_VIRAL)[number];
 
+export const TOPIC_PRIORITIES = ["A", "B", "C"] as const;
+export type TopicPriority = (typeof TOPIC_PRIORITIES)[number];
+
+export const PRODUCTION_WAVES = [1, 2, 3, 4] as const;
+export type ProductionWave = (typeof PRODUCTION_WAVES)[number];
+
 export const EDITORIAL_CATEGORIES = [
   "Human Brain",
   "Psychology",
@@ -53,6 +59,8 @@ export type EditorialTopic = {
   linked_project_id: string | null;
   published_video_url: string | null;
   is_featured: boolean;
+  priority: TopicPriority | string;
+  production_wave: number;
   created_at: string;
   updated_at: string;
   linked_project: LinkedProjectSummary | null;
@@ -71,6 +79,8 @@ export type EditorialTopicListParams = {
   status?: string;
   category?: string;
   difficulty?: string;
+  priority?: string;
+  production_wave?: number;
   min_evergreen_score?: number;
   search?: string;
   include_archived?: boolean;
@@ -93,6 +103,8 @@ export type EditorialTopicCreateInput = {
   notes?: string | null;
   is_featured?: boolean;
   published_video_url?: string | null;
+  priority?: string;
+  production_wave?: number;
 };
 
 export type EditorialTopicUpdateInput = Partial<EditorialTopicCreateInput>;
@@ -126,4 +138,9 @@ export type EditorialTopicSummary = {
   published: number;
   project_created: number;
   total_active: number;
+  wave_1_remaining: number;
+  wave_2_remaining: number;
+  current_wave: number;
+  approved_in_current_wave: number;
+  remaining_in_wave: number;
 };
