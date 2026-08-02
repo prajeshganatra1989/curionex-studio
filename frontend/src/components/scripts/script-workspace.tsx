@@ -47,6 +47,7 @@ import { useProject, useProjectKnowledgePacks } from "@/lib/projects/hooks";
 import { DOCUMENT_ORDER } from "@/lib/scripts/documents";
 import {
   useCreateWorkflowVersion,
+  useProductionPackageEligibility,
   useScript,
   useScriptWorkflow,
   useScriptWorkflowStatus,
@@ -101,6 +102,7 @@ export function ScriptWorkspace() {
   const updateScript = useUpdateScript(scriptId);
   const createVersion = useCreateWorkflowVersion(scriptId);
   const submitReview = useSubmitWorkflowReview(scriptId);
+  const productionEligibility = useProductionPackageEligibility(scriptId);
   const packsQuery = useProjectKnowledgePacks(projectId, {
     page: 1,
     page_size: 50,
@@ -616,11 +618,17 @@ export function ScriptWorkspace() {
         saveFailed={saveFailed}
         workflowAction={workflowAction}
         workflowLoading={createVersion.isPending || submitReview.isPending}
+        productionPackageEligible={productionEligibility.data?.eligible === true}
         onSave={() => void saveDocuments(dirtyKeys)}
         onReviewQuality={
           readOnly || !hasMasterScript
             ? undefined
             : () => setQualityReviewOpen(true)
+        }
+        onGenerateProductionPackage={() =>
+          router.push(
+            `/projects/${projectId}/scripts/${scriptId}/production-package`,
+          )
         }
         onCreateVersion={() => setConfirmVersion(true)}
         onWorkflowAction={(kind) => void onWorkflowAction(kind)}

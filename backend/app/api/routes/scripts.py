@@ -12,6 +12,10 @@ from app.audit.context import extract_request_audit_context
 from app.db.session import get_db
 from app.models.script import Script
 from app.models.user import User
+from app.production.package_schemas import (
+    ProductionPackageEligibilityResponse,
+    ProductionPackageResponse,
+)
 from app.schemas.ai import (
     AiGenerationListResponse,
     AiGenerationResponse,
@@ -33,7 +37,12 @@ from app.schemas.script import (
     ScriptResponse,
     ScriptUpdate,
 )
-from app.services import script_ai_service, script_quality_service, script_service
+from app.services import (
+    production_package_service,
+    script_ai_service,
+    script_quality_service,
+    script_service,
+)
 
 project_scripts_router = APIRouter(
     prefix="/projects/{project_id}/scripts",
@@ -70,6 +79,7 @@ def _map_error(exc: Exception) -> HTTPException:
             script_service.NotFoundError,
             script_ai_service.NotFoundError,
             script_quality_service.NotFoundError,
+            production_package_service.NotFoundError,
         ),
     ):
         return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
@@ -79,9 +89,15 @@ def _map_error(exc: Exception) -> HTTPException:
             script_service.ForbiddenError,
             script_ai_service.ForbiddenError,
             script_quality_service.ForbiddenError,
+            production_package_service.ForbiddenError,
         ),
     ):
         return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+    if isinstance(exc, production_package_service.NotGoldApprovedError):
+        return HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": exc.reason, "message": str(exc)},
+        )
     if isinstance(exc, script_ai_service.PrerequisiteError):
         return HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -679,3 +695,50 @@ def post_apply_quality_suggestion(
         strategy=payload.strategy,
         stale_input=stale,
     )
+
+
+@scripts_router.get(
+    "/{script_id}/production-package/eligibility",
+    response_model=ProductionPackageEligibilityResponse,
+)
+def get_production_package_eligibility(
+    script_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_permission("scripts.view"))],
+) -> ProductionPackageEligibilityResponse:
+    try:
+        script = script_service.get_script_for_user(db, script_id, current_user)
+        return production_package_service.evaluate_gold_eligibility(
+            db, script, actor=current_user
+        )
+    except (
+        production_package_service.NotFoundError,
+        production_package_service.ForbiddenError,
+        script_service.NotFoundError,
+        script_service.ForbiddenError,
+    ) as exc:
+        raise _map_error(exc) from None
+
+
+@scripts_router.post(
+    "/{script_id}/production-package",
+    response_model=ProductionPackageResponse,
+)
+def post_production_package(
+    script_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_permission("scripts.view"))],
+) -> ProductionPackageResponse:
+    """Generate a planning-only production package for a Gold-eligible script."""
+    try:
+        return production_package_service.generate_production_package(
+            db, script_id, actor=current_user
+        )
+    except (
+        production_package_service.NotFoundError,
+        production_package_service.ForbiddenError,
+        production_package_service.NotGoldApprovedError,
+        script_service.NotFoundError,
+        script_service.ForbiddenError,
+    ) as exc:
+        raise _map_error(exc) from None

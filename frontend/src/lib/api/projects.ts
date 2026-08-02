@@ -15,6 +15,8 @@ import type {
   ProjectListParams,
   ProjectListResponse,
   ProjectUpdateInput,
+  ProductionPackage,
+  ProductionPackageEligibility,
   ScriptCreateInput,
   ScriptDetail,
   ScriptDocument,
@@ -242,5 +244,20 @@ export function createWorkflowVersion(client: ApiClient, scriptId: string) {
 export function submitWorkflowReview(client: ApiClient, scriptId: string) {
   return client.post<WorkflowReviewResponse>(
     `/scripts/${scriptId}/workflow/submit-review`,
+  );
+}
+
+export function getProductionPackageEligibility(
+  client: ApiClient,
+  scriptId: string,
+) {
+  return client.get<ProductionPackageEligibility>(
+    `/scripts/${scriptId}/production-package/eligibility`,
+  );
+}
+
+export function createProductionPackage(client: ApiClient, scriptId: string) {
+  return client.post<ProductionPackage>(
+    `/scripts/${scriptId}/production-package`,
   );
 }

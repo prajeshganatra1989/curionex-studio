@@ -23,12 +23,14 @@ type ScriptHeaderProps = {
   saveFailed?: boolean;
   workflowAction: { kind: WorkflowActionKind; label: string };
   workflowLoading?: boolean;
+  productionPackageEligible?: boolean;
   onSave: () => void;
   onReviewQuality?: () => void;
   onCreateVersion: () => void;
   onWorkflowAction: (kind: WorkflowActionKind) => void;
   onOpenNav: () => void;
   onEditMeta: () => void;
+  onGenerateProductionPackage?: () => void;
 };
 
 export function ScriptHeader({
@@ -41,12 +43,14 @@ export function ScriptHeader({
   saveFailed,
   workflowAction,
   workflowLoading,
+  productionPackageEligible,
   onSave,
   onReviewQuality,
   onCreateVersion,
   onWorkflowAction,
   onOpenNav,
   onEditMeta,
+  onGenerateProductionPackage,
 }: ScriptHeaderProps) {
   return (
     <header className="sticky top-0 z-20 border-b border-border/80 bg-background/90 backdrop-blur-md">
@@ -129,6 +133,18 @@ export function ScriptHeader({
                 data-testid="script-header-review-quality"
               >
                 Review Script Quality
+              </Button>
+            ) : null}
+            {productionPackageEligible && onGenerateProductionPackage ? (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={onGenerateProductionPackage}
+                disabled={saving}
+                aria-label="Generate production package"
+                data-testid="script-header-production-package"
+              >
+                Generate Production Package
               </Button>
             ) : null}
             <Button

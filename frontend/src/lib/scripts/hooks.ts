@@ -9,7 +9,9 @@ import {
 import {
   archiveScript,
   createWorkflowVersion,
+  createProductionPackage,
   getContentVersion,
+  getProductionPackageEligibility,
   getScript,
   getScriptWorkflow,
   getWorkflowStatus,
@@ -42,6 +44,10 @@ export const scriptKeys = {
     [...scriptKeys.all, "versions", scriptId] as const,
   versionDetail: (versionId: string) =>
     [...scriptKeys.all, "version", versionId] as const,
+  productionEligibility: (scriptId: string) =>
+    [...scriptKeys.detail(scriptId), "production-eligibility"] as const,
+  productionPackage: (scriptId: string) =>
+    [...scriptKeys.detail(scriptId), "production-package"] as const,
 };
 
 export function useScript(scriptId: string) {
@@ -182,5 +188,38 @@ export function useContentVersion(versionId: string | null) {
     queryKey: scriptKeys.versionDetail(versionId ?? ""),
     queryFn: () => getContentVersion(api, versionId!),
     enabled: status === "authenticated" && Boolean(versionId),
+  });
+}
+
+export function useProductionPackageEligibility(scriptId: string) {
+  const { api, status } = useAuth();
+  return useQuery({
+    queryKey: scriptKeys.productionEligibility(scriptId),
+    queryFn: () => getProductionPackageEligibility(api, scriptId),
+    enabled: status === "authenticated" && Boolean(scriptId),
+  });
+}
+
+export function useCreateProductionPackage(scriptId: string) {
+  const { api } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => createProductionPackage(api, scriptId),
+    onSuccess: (data) => {
+      qc.setQueryData(scriptKeys.productionPackage(scriptId), data);
+      void qc.invalidateQueries({
+        queryKey: scriptKeys.productionEligibility(scriptId),
+      });
+    },
+  });
+}
+
+export function useProductionPackage(scriptId: string, enabled = false) {
+  const { api, status } = useAuth();
+  return useQuery({
+    queryKey: scriptKeys.productionPackage(scriptId),
+    queryFn: () => createProductionPackage(api, scriptId),
+    enabled: status === "authenticated" && Boolean(scriptId) && enabled,
+    staleTime: 60_000,
   });
 }
