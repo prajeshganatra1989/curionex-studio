@@ -8,6 +8,7 @@ import {
   ProductionPackagePage,
   storyboardV2ToMarkdown,
 } from "@/components/scripts/production-package-page";
+import type { ProductionPackage } from "@/lib/api/types";
 
 const pushMock = vi.fn();
 vi.mock("next/navigation", () => ({
@@ -53,7 +54,7 @@ function wrap(ui: ReactElement) {
   );
 }
 
-const samplePackage = {
+const samplePackage: ProductionPackage = {
   project: {
     id: "proj-1",
     project_code: "CRX-0001",
