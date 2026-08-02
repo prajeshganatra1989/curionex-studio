@@ -384,3 +384,147 @@ export type WorkflowStatusValue =
   | "completed"
   | "archived"
   | string;
+
+/** Production package (planning export — no media). */
+export type ProductionPackageEligibility = {
+  eligible: boolean;
+  reason: string;
+  gold_gate: string | null;
+  overall_score: number | null;
+  script_status: string;
+  has_approved_version: boolean;
+};
+
+export type ProductionPackageScenePurpose =
+  | "hook"
+  | "question"
+  | "explanation"
+  | "twist"
+  | "perspective_shift"
+  | "cta";
+
+export type ProductionPackageStoryboardScene = {
+  scene_number: number;
+  time_range: string;
+  start_seconds: number;
+  end_seconds: number;
+  narration: string;
+  purpose: ProductionPackageScenePurpose;
+  suggested_visual: string;
+  suggested_motion: string;
+  suggested_on_screen_text: string;
+  transition: string;
+};
+
+export type ProductionPackageShot = {
+  shot_number: number;
+  scene_number: number;
+  asset_type: string;
+  description: string;
+  illustration: boolean;
+  stock: boolean;
+  diagram: boolean;
+  animation: boolean;
+  text_overlay: boolean;
+  priority: "must" | "should" | "nice" | string;
+};
+
+export type ProductionPackageAssetItem = {
+  id: string;
+  label: string;
+  category: string;
+  required: boolean;
+  notes: string | null;
+};
+
+export type ProductionPackageVoice = {
+  estimated_duration_seconds: number;
+  word_count: number;
+  recommended_wpm: number;
+  pause_markers: string[];
+  emphasis_markers: string[];
+  pronunciation_notes: string[];
+  persona_hint: string;
+};
+
+export type ProductionPackageSubtitle = {
+  index: number;
+  start_seconds: number;
+  end_seconds: number;
+  text: string;
+  lines: string[];
+};
+
+export type ProductionPackageYouTube = {
+  title: string;
+  description: string;
+  keywords: string[];
+  hashtags: string[];
+  category: string;
+  thumbnail_concept: string;
+};
+
+export type ProductionPackageQaItem = {
+  id: string;
+  domain: string;
+  label: string;
+  checked: boolean;
+};
+
+export type ProductionPackage = {
+  project: {
+    id: string;
+    project_code: string;
+    name: string;
+    status: string;
+    description: string | null;
+  };
+  script: {
+    id: string;
+    script_code: string;
+    title: string;
+    status: string;
+    description: string | null;
+    knowledge_pack_id: string | null;
+    project_id: string;
+  };
+  knowledge_pack: {
+    id: string | null;
+    name: string | null;
+    status: string | null;
+    description: string | null;
+    facts: string | null;
+    sources: string | null;
+    content_angle: string | null;
+    key_insights: string | null;
+  };
+  discovery_brief: string;
+  story_spine: string;
+  master_script: string;
+  quality_review: {
+    available: boolean;
+    generation_id: string | null;
+    overall_score: number | null;
+    quality_band: string | null;
+    recommended_next_action: string | null;
+    gold_threshold_met: boolean;
+  };
+  production_metadata: {
+    generated_at: string;
+    gold_gate: string;
+    target_duration_seconds: number;
+    recommended_wpm: number;
+    format: string;
+    blueprint_version: string;
+    voice_bible_version: string;
+    editorial_bible_version: string;
+    notes: string;
+  };
+  storyboard: ProductionPackageStoryboardScene[];
+  shot_list: ProductionPackageShot[];
+  asset_checklist: ProductionPackageAssetItem[];
+  voice_package: ProductionPackageVoice;
+  subtitle_package: ProductionPackageSubtitle[];
+  youtube_package: ProductionPackageYouTube;
+  qa_package: ProductionPackageQaItem[];
+};
