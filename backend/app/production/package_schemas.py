@@ -95,6 +95,87 @@ class StoryboardScene(BaseModel):
     transition: str
 
 
+VisualType = Literal[
+    "AI Illustration",
+    "Stock Footage",
+    "3D Animation",
+    "Diagram",
+    "Timeline",
+    "Map",
+    "Historical Photo",
+    "UI Animation",
+    "Macro",
+    "Space",
+    "Medical Illustration",
+    "Icon Animation",
+]
+
+CameraMovement = Literal[
+    "Static",
+    "Push",
+    "Pull",
+    "Pan",
+    "Orbit",
+    "Parallax",
+    "No movement",
+]
+
+TransitionKind = Literal[
+    "Fade",
+    "Cut",
+    "Cross Dissolve",
+    "Match Cut",
+    "Zoom",
+    "Slide",
+]
+
+MusicMood = Literal[
+    "Curious",
+    "Calm",
+    "Epic",
+    "Reflective",
+    "Wonder",
+]
+
+TextPosition = Literal[
+    "top",
+    "center",
+    "bottom",
+    "lower_third",
+    "none",
+]
+
+ViewerEmotion = Literal[
+    "curiosity",
+    "wonder",
+    "clarity",
+    "surprise",
+    "calm_awe",
+    "belonging",
+]
+
+
+class StoryboardV2Scene(BaseModel):
+    scene_number: int
+    start_time: float
+    end_time: float
+    duration: float
+    narration: str
+    scene_goal: str
+    viewer_emotion: ViewerEmotion
+    visual_type: VisualType
+    camera_movement: CameraMovement
+    transition: TransitionKind
+    animation_suggestion: str
+    on_screen_text: str
+    text_position: TextPosition
+    asset_required: str
+    music_mood: MusicMood
+    sound_effects: str
+    notes: str
+    purpose: ScenePurpose
+
+
 class ShotListItem(BaseModel):
     shot_number: int
     scene_number: int
@@ -167,6 +248,7 @@ class ProductionPackageResponse(BaseModel):
     quality_review: ProductionPackageQualityReviewSummary
     production_metadata: ProductionPackageMetadata
     storyboard: list[StoryboardScene]
+    storyboard_v2: list[StoryboardV2Scene]
     shot_list: list[ShotListItem]
     asset_checklist: list[AssetChecklistItem]
     voice_package: VoicePackage

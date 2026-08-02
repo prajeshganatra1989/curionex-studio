@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import { ArrowLeft, Clapperboard, Loader2, RefreshCw } from "lucide-react";
+import { ArrowLeft, Check, Clapperboard, Copy, Download, Loader2, RefreshCw } from "lucide-react";
 
 import { PageContainer } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,10 @@ import { ErrorState } from "@/components/ui/error-state";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ApiError } from "@/lib/api/client";
-import type { ProductionPackage } from "@/lib/api/types";
+import type {
+  ProductionPackage,
+  ProductionPackageStoryboardV2Scene,
+} from "@/lib/api/types";
 import {
   useCreateProductionPackage,
   useProductionPackage,
@@ -23,6 +26,7 @@ import {
 const TABS = [
   "overview",
   "storyboard",
+  "storyboard_v2",
   "shot_list",
   "assets",
   "voice",
@@ -36,6 +40,7 @@ type TabId = (typeof TABS)[number];
 const TAB_LABELS: Record<TabId, string> = {
   overview: "Overview",
   storyboard: "Storyboard",
+  storyboard_v2: "Storyboard V2",
   shot_list: "Shot List",
   assets: "Assets",
   voice: "Voice",
@@ -196,6 +201,248 @@ function StoryboardTab({ pkg }: { pkg: ProductionPackage }) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function formatSeconds(value: number): string {
+  const whole = Math.max(0, Math.floor(value));
+  const mins = Math.floor(whole / 60);
+  const secs = whole % 60;
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+export function storyboardV2ToMarkdown(
+  scenes: ProductionPackageStoryboardV2Scene[],
+  title = "Production Storyboard V2",
+): string {
+  const lines = [`# ${title}`, ""];
+  for (const scene of scenes) {
+    lines.push(`## Scene ${scene.scene_number}`, "");
+    lines.push(
+      `- **Time:** ${scene.start_time.toFixed(2)}s – ${scene.end_time.toFixed(2)}s (${scene.duration.toFixed(2)}s)`,
+    );
+    lines.push(`- **Scene goal:** ${scene.scene_goal}`);
+    lines.push(`- **Viewer emotion:** ${scene.viewer_emotion}`);
+    lines.push(`- **Visual type:** ${scene.visual_type}`);
+    lines.push(`- **Camera:** ${scene.camera_movement}`);
+    lines.push(`- **Transition:** ${scene.transition}`);
+    lines.push(`- **Animation:** ${scene.animation_suggestion}`);
+    lines.push(`- **On-screen text:** ${scene.on_screen_text || "—"}`);
+    lines.push(`- **Text position:** ${scene.text_position}`);
+    lines.push(`- **Asset required:** ${scene.asset_required}`);
+    lines.push(`- **Music mood:** ${scene.music_mood}`);
+    lines.push(`- **SFX:** ${scene.sound_effects}`);
+    lines.push(`- **Notes:** ${scene.notes}`, "");
+    lines.push("**Narration**", "", scene.narration, "");
+  }
+  return `${lines.join("\n").trimEnd()}\n`;
+}
+
+function StoryboardV2Tab({ pkg }: { pkg: ProductionPackage }) {
+  const [copied, setCopied] = useState(false);
+  const scenes = useMemo(
+    () => pkg.storyboard_v2 ?? [],
+    [pkg.storyboard_v2],
+  );
+  const totalDuration = scenes.reduce((sum, s) => sum + s.duration, 0);
+  const markdown = useMemo(
+    () =>
+      storyboardV2ToMarkdown(
+        scenes,
+        `${pkg.script.script_code} — Storyboard V2`,
+      ),
+    [pkg.script.script_code, scenes],
+  );
+
+  async function copyMarkdown() {
+    try {
+      await navigator.clipboard.writeText(markdown);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard may be unavailable in tests */
+    }
+  }
+
+  function downloadMarkdown() {
+    const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${pkg.script.script_code}-storyboard-v2.md`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  if (!scenes.length) {
+    return (
+      <EmptyState
+        title="No Storyboard V2 scenes"
+        description="Regenerate the production package to build scene cards."
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-4" data-testid="storyboard-v2-panel">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
+          {scenes.length} scenes · ~{totalDuration.toFixed(1)}s timeline
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void copyMarkdown()}
+            data-testid="copy-storyboard-v2-markdown"
+            className="h-9 px-3 text-xs"
+          >
+            {copied ? (
+              <>
+                <Check className="h-4 w-4" />
+                Copied
+              </>
+            ) : (
+              <>
+                <Copy className="h-4 w-4" />
+                Copy Markdown
+              </>
+            )}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={downloadMarkdown}
+            data-testid="export-storyboard-v2-markdown"
+            className="h-9 px-3 text-xs"
+          >
+            <Download className="h-4 w-4" />
+            Export Markdown
+          </Button>
+        </div>
+      </div>
+
+      <div
+        className="relative overflow-x-auto pb-2"
+        aria-label="Storyboard V2 timeline"
+      >
+        <div className="mb-3 flex min-w-[640px] gap-1">
+          {scenes.map((scene) => {
+            const flex = Math.max(scene.duration, 1);
+            return (
+              <div
+                key={`rail-${scene.scene_number}`}
+                className="rounded-md bg-brand-orange/20 px-2 py-1.5 text-center"
+                style={{ flexGrow: flex, flexBasis: 0 }}
+                title={`Scene ${scene.scene_number}`}
+              >
+                <p className="text-[10px] font-semibold text-brand-amber">
+                  S{scene.scene_number}
+                </p>
+                <p className="font-mono text-[10px] text-muted-foreground">
+                  {formatSeconds(scene.start_time)}–{formatSeconds(scene.end_time)}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {scenes.map((scene) => (
+          <article
+            key={scene.scene_number}
+            className="rounded-xl border border-border bg-surface p-4"
+            data-testid={`storyboard-v2-scene-${scene.scene_number}`}
+          >
+            <header className="flex flex-wrap items-start justify-between gap-2 border-b border-border pb-3">
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  Scene {scene.scene_number}
+                </p>
+                <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+                  {formatSeconds(scene.start_time)}–{formatSeconds(scene.end_time)}{" "}
+                  · {scene.duration.toFixed(1)}s
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2 text-[10px] uppercase tracking-wide">
+                <span className="rounded-md bg-surface-elevated px-2 py-1 text-muted-foreground">
+                  {scene.visual_type}
+                </span>
+                <span className="rounded-md bg-surface-elevated px-2 py-1 text-muted-foreground">
+                  {scene.camera_movement}
+                </span>
+                <span className="rounded-md bg-surface-elevated px-2 py-1 text-muted-foreground">
+                  {scene.music_mood}
+                </span>
+              </div>
+            </header>
+            <p className="mt-3 text-sm leading-relaxed text-foreground">
+              {scene.narration}
+            </p>
+            <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+              <div>
+                <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Scene goal
+                </dt>
+                <dd className="mt-1 text-muted-foreground">{scene.scene_goal}</dd>
+              </div>
+              <div>
+                <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Viewer emotion
+                </dt>
+                <dd className="mt-1 capitalize text-muted-foreground">
+                  {scene.viewer_emotion.replaceAll("_", " ")}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Transition
+                </dt>
+                <dd className="mt-1 text-muted-foreground">{scene.transition}</dd>
+              </div>
+              <div>
+                <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Animation
+                </dt>
+                <dd className="mt-1 text-muted-foreground">
+                  {scene.animation_suggestion}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  On-screen text
+                </dt>
+                <dd className="mt-1 text-muted-foreground">
+                  {scene.on_screen_text || "—"}{" "}
+                  <span className="text-[10px] uppercase">
+                    ({scene.text_position})
+                  </span>
+                </dd>
+              </div>
+              <div>
+                <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Asset required
+                </dt>
+                <dd className="mt-1 text-muted-foreground">{scene.asset_required}</dd>
+              </div>
+              <div>
+                <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  SFX
+                </dt>
+                <dd className="mt-1 text-muted-foreground">{scene.sound_effects}</dd>
+              </div>
+              <div className="sm:col-span-2 lg:col-span-3">
+                <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Notes
+                </dt>
+                <dd className="mt-1 text-muted-foreground">{scene.notes}</dd>
+              </div>
+            </dl>
+          </article>
+        ))}
+      </div>
     </div>
   );
 }
@@ -418,6 +665,7 @@ export function ProductionPackagePage() {
           <div role="tabpanel">
             {tab === "overview" ? <OverviewTab pkg={pkg} /> : null}
             {tab === "storyboard" ? <StoryboardTab pkg={pkg} /> : null}
+            {tab === "storyboard_v2" ? <StoryboardV2Tab pkg={pkg} /> : null}
             {tab === "shot_list" ? <ShotListTab pkg={pkg} /> : null}
             {tab === "assets" ? (
               <ChecklistTab items={pkg.asset_checklist} />

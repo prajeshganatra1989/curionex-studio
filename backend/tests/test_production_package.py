@@ -9,6 +9,10 @@ from app.production.storyboard import (
     build_subtitle_segments,
     wrap_caption_lines,
 )
+from app.production.storyboard_v2 import (
+    build_storyboard_v2,
+    storyboard_v2_to_markdown,
+)
 from app.schemas.auth import UserCreate
 from app.services.rbac_service import assign_owner_role, seed_rbac_catalog
 from app.services.user_service import create_user
@@ -81,6 +85,61 @@ def test_storyboard_scene_duration_bounds() -> None:
         }
     assert scenes[0]["purpose"] == "hook"
     assert scenes[-1]["purpose"] == "cta"
+
+
+def test_storyboard_v2_fields_and_vocab() -> None:
+    scenes = build_storyboard_v2(MASTER, wpm=150)
+    assert scenes
+    assert len(scenes) == len(build_storyboard_scenes(MASTER, wpm=150))
+    visual_types = {
+        "AI Illustration",
+        "Stock Footage",
+        "3D Animation",
+        "Diagram",
+        "Timeline",
+        "Map",
+        "Historical Photo",
+        "UI Animation",
+        "Macro",
+        "Space",
+        "Medical Illustration",
+        "Icon Animation",
+    }
+    cameras = {
+        "Static",
+        "Push",
+        "Pull",
+        "Pan",
+        "Orbit",
+        "Parallax",
+        "No movement",
+    }
+    transitions = {
+        "Fade",
+        "Cut",
+        "Cross Dissolve",
+        "Match Cut",
+        "Zoom",
+        "Slide",
+    }
+    moods = {"Curious", "Calm", "Epic", "Reflective", "Wonder"}
+    for scene in scenes:
+        assert scene["duration"] == round(
+            scene["end_time"] - scene["start_time"], 2
+        )
+        assert scene["visual_type"] in visual_types
+        assert scene["camera_movement"] in cameras
+        assert scene["transition"] in transitions
+        assert scene["music_mood"] in moods
+        assert scene["scene_goal"]
+        assert scene["viewer_emotion"]
+        assert scene["asset_required"]
+        assert "sound_effects" in scene
+        assert scene["notes"]
+    md = storyboard_v2_to_markdown(scenes, title="Test Board")
+    assert md.startswith("# Test Board")
+    assert "## Scene 1" in md
+    assert "Macro" in md or "Stock Footage" in md
 
 
 def test_subtitle_line_limits() -> None:
@@ -162,6 +221,14 @@ def test_production_package_when_script_approved(
     assert payload["script"]["script_code"] == script["script_code"]
     assert payload["master_script"]
     assert payload["storyboard"]
+    assert payload["storyboard_v2"]
+    assert len(payload["storyboard_v2"]) == len(payload["storyboard"])
+    first = payload["storyboard_v2"][0]
+    assert first["scene_number"] == 1
+    assert "visual_type" in first
+    assert "camera_movement" in first
+    assert "music_mood" in first
+    assert "sound_effects" in first
     assert payload["shot_list"]
     assert payload["asset_checklist"]
     assert payload["voice_package"]["word_count"] > 0
