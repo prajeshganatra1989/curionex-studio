@@ -5,21 +5,53 @@ from __future__ import annotations
 # Stable permission codes used by authorization checks.
 PERMISSION_CATALOG: list[dict[str, str]] = [
     {"code": "users.view", "name": "View users", "description": "List and view users"},
-    {"code": "users.create", "name": "Create users", "description": "Create user accounts"},
-    {"code": "users.update", "name": "Update users", "description": "Update user profiles"},
+    {
+        "code": "users.create",
+        "name": "Create users",
+        "description": "Create user accounts",
+    },
+    {
+        "code": "users.update",
+        "name": "Update users",
+        "description": "Update user profiles",
+    },
     {
         "code": "users.deactivate",
         "name": "Deactivate users",
         "description": "Deactivate user accounts",
     },
-    {"code": "roles.view", "name": "View roles", "description": "List roles and permissions"},
+    {
+        "code": "roles.view",
+        "name": "View roles",
+        "description": "List roles and permissions",
+    },
     {"code": "roles.create", "name": "Create roles", "description": "Create roles"},
-    {"code": "roles.update", "name": "Update roles", "description": "Update roles and grants"},
-    {"code": "roles.assign", "name": "Assign roles", "description": "Assign roles to users"},
+    {
+        "code": "roles.update",
+        "name": "Update roles",
+        "description": "Update roles and grants",
+    },
+    {
+        "code": "roles.assign",
+        "name": "Assign roles",
+        "description": "Assign roles to users",
+    },
     {"code": "projects.view", "name": "View projects", "description": "View projects"},
-    {"code": "projects.create", "name": "Create projects", "description": "Create projects"},
-    {"code": "projects.update", "name": "Update projects", "description": "Update projects"},
-    {"code": "projects.delete", "name": "Delete projects", "description": "Delete projects"},
+    {
+        "code": "projects.create",
+        "name": "Create projects",
+        "description": "Create projects",
+    },
+    {
+        "code": "projects.update",
+        "name": "Update projects",
+        "description": "Update projects",
+    },
+    {
+        "code": "projects.delete",
+        "name": "Delete projects",
+        "description": "Delete projects",
+    },
     {
         "code": "knowledge_packs.view",
         "name": "View knowledge packs",
@@ -41,9 +73,21 @@ PERMISSION_CATALOG: list[dict[str, str]] = [
         "description": "Delete knowledge packs",
     },
     {"code": "scripts.view", "name": "View scripts", "description": "View scripts"},
-    {"code": "scripts.create", "name": "Create scripts", "description": "Create scripts"},
-    {"code": "scripts.update", "name": "Update scripts", "description": "Update scripts"},
-    {"code": "scripts.delete", "name": "Delete scripts", "description": "Delete scripts"},
+    {
+        "code": "scripts.create",
+        "name": "Create scripts",
+        "description": "Create scripts",
+    },
+    {
+        "code": "scripts.update",
+        "name": "Update scripts",
+        "description": "Update scripts",
+    },
+    {
+        "code": "scripts.delete",
+        "name": "Delete scripts",
+        "description": "Delete scripts",
+    },
     {
         "code": "workflows.view",
         "name": "View workflows",
@@ -54,8 +98,16 @@ PERMISSION_CATALOG: list[dict[str, str]] = [
         "name": "Update workflows",
         "description": "Transition and update content production workflows",
     },
-    {"code": "versions.view", "name": "View versions", "description": "View content versions"},
-    {"code": "versions.create", "name": "Create versions", "description": "Create content versions"},
+    {
+        "code": "versions.view",
+        "name": "View versions",
+        "description": "View content versions",
+    },
+    {
+        "code": "versions.create",
+        "name": "Create versions",
+        "description": "Create content versions",
+    },
     {
         "code": "content_versions.view",
         "name": "View content versions",
@@ -66,18 +118,58 @@ PERMISSION_CATALOG: list[dict[str, str]] = [
         "name": "Create content versions",
         "description": "Create immutable content version snapshots",
     },
-    {"code": "approvals.view", "name": "View approvals", "description": "View approvals"},
-    {"code": "approvals.create", "name": "Create approvals", "description": "Submit for approval"},
+    {
+        "code": "approvals.view",
+        "name": "View approvals",
+        "description": "View approvals",
+    },
+    {
+        "code": "approvals.create",
+        "name": "Create approvals",
+        "description": "Submit for approval",
+    },
     {"code": "approvals.approve", "name": "Approve", "description": "Approve content"},
-    {"code": "approvals.reject", "name": "Reject", "description": "Reject / request changes"},
+    {
+        "code": "approvals.reject",
+        "name": "Reject",
+        "description": "Reject / request changes",
+    },
     {
         "code": "approvals.review",
         "name": "Review approvals",
         "description": "Approve or reject pending approvals",
     },
     {"code": "audit.view", "name": "View audit logs", "description": "View audit logs"},
-    {"code": "settings.view", "name": "View settings", "description": "View system settings"},
-    {"code": "settings.update", "name": "Update settings", "description": "Update system settings"},
+    {
+        "code": "settings.view",
+        "name": "View settings",
+        "description": "View system settings",
+    },
+    {
+        "code": "settings.update",
+        "name": "Update settings",
+        "description": "Update system settings",
+    },
+    {
+        "code": "ai.view",
+        "name": "View AI foundation",
+        "description": "View AI providers, models, jobs, and generations",
+    },
+    {
+        "code": "ai.manage",
+        "name": "Manage AI settings",
+        "description": "Manage AI providers, credentials, models, and settings",
+    },
+    {
+        "code": "ai.generate",
+        "name": "Queue AI jobs",
+        "description": "Queue AI generation jobs (no live generation in v0.16.0)",
+    },
+    {
+        "code": "prompt.manage",
+        "name": "Manage prompts",
+        "description": "Create and version AI prompts",
+    },
 ]
 
 ALL_PERMISSION_CODES: list[str] = [item["code"] for item in PERMISSION_CATALOG]
@@ -112,6 +204,10 @@ ROLE_CATALOG: dict[str, dict] = {
             "content_versions.create",
             "approvals.view",
             "approvals.create",
+            "ai.view",
+            "ai.manage",
+            "ai.generate",
+            "prompt.manage",
         ],
     },
     "Script Writer": {
@@ -129,6 +225,9 @@ ROLE_CATALOG: dict[str, dict] = {
             "content_versions.view",
             "content_versions.create",
             "approvals.create",
+            "ai.view",
+            "ai.generate",
+            "prompt.manage",
         ],
     },
     "Reviewer": {
@@ -144,6 +243,7 @@ ROLE_CATALOG: dict[str, dict] = {
             "approvals.approve",
             "approvals.reject",
             "approvals.review",
+            "ai.view",
         ],
     },
 }

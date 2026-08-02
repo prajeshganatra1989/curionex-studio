@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from app.api.routes import (
+    ai,
     audit,
     auth,
     categories,
@@ -33,3 +34,4 @@ api_router.include_router(content_versions.approvals_router)
 api_router.include_router(scripts.project_scripts_router)
 api_router.include_router(scripts.scripts_router)
 api_router.include_router(workflows.workflows_router)
+api_router.include_router(ai.router)

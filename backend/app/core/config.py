@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     # Example: http://localhost:3000,http://127.0.0.1:3000
     CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
 
+    # Fernet key (url-safe base64) for encrypting AI provider API keys at rest.
+    # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    AI_CREDENTIALS_KEY: str = ""
+
     @field_validator("JWT_ALGORITHM")
     @classmethod
     def validate_jwt_algorithm(cls, value: str) -> str:
@@ -74,9 +78,7 @@ class Settings(BaseSettings):
         if not self.CORS_ORIGINS.strip():
             return []
         return [
-            origin.strip()
-            for origin in self.CORS_ORIGINS.split(",")
-            if origin.strip()
+            origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()
         ]
 
 

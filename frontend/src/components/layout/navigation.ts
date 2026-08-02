@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Settings,
   BookOpen,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 
@@ -24,5 +25,6 @@ export const MAIN_NAV: NavItem[] = [
   { href: "/versions", label: "Versions", icon: Layers3 },
   { href: "/reviews", label: "Reviews", icon: CheckSquare },
   { href: "/activity", label: "Activity", icon: Activity },
+  { href: "/ai", label: "AI", icon: Sparkles },
   { href: "/settings", label: "Settings", icon: Settings },
 ];

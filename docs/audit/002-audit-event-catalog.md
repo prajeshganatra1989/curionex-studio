@@ -36,6 +36,17 @@ Stable action codes currently emitted by Curionex Studio. This catalog will grow
 | `script.updated` | `script` | Script metadata updated |
 | `script.archived` | `script` | Script archived |
 | `script.document_updated` | `script` | Workspace document title/content updated |
+| `ai.prompt_created` | `ai_prompt` | AI prompt created |
+| `ai.prompt_updated` | `ai_prompt` | AI prompt metadata updated |
+| `ai.prompt_version_created` | `ai_prompt_version` | Immutable prompt version created |
+| `ai.prompt_version_activated` | `ai_prompt_version` | Prompt version activated |
+| `ai.job_queued` | `ai_job` | AI job queued (no live generation in v0.16.0) |
+| `ai.job_cancelled` | `ai_job` | AI job cancelled |
+| `ai.settings_changed` | `ai_settings` | AI defaults updated |
+| `ai.provider_updated` | `ai_provider` | Provider settings updated |
+| `ai.provider_credentials_set` | `ai_provider` | Provider credentials stored (encrypted) |
+| `ai.provider_credentials_cleared` | `ai_provider` | Provider credentials cleared |
+| `ai.model_updated` | `ai_model` | Model flags updated |
 
 Reserved for future use (defined in constants / docs, not all emitted yet):
 
@@ -45,3 +56,4 @@ Constants live in `app/audit/actions.py`.
 
 Note: audit metadata for content versions must **not** include full content snapshots.
 Note: audit metadata for script documents must **not** include full document content.
+Note: audit metadata for AI credentials must **never** include API keys or ciphertext.

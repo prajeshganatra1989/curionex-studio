@@ -23,6 +23,7 @@ SENSITIVE_METADATA_KEYS = frozenset(
         "refresh_token",
         "jwt",
         "authorization",
+        "encrypted_api_key",
         "api_key",
         "apikey",
         "cookie",
