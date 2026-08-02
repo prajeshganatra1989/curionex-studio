@@ -2,15 +2,20 @@ export type DashboardMetrics = {
   projects: number;
   knowledgePacks: number;
   scripts: number;
-  draftScripts: number;
+  /** Scripts needing revision from production overview (live when productionLive). */
+  needingRevision: number;
   pendingReviews: number;
   approvedScripts: number;
+  /** AI jobs currently running from production overview. */
+  aiRunning: number;
   /** True when any metric cards still use demo values. */
   isDemo: boolean;
   /** True when the Projects metric comes from GET /projects total. */
   projectsLive: boolean;
   /** True when Pending Reviews metric comes from GET /approvals total. */
   pendingReviewsLive: boolean;
+  /** True when approved / needing revision / AI running come from production overview. */
+  productionLive: boolean;
 };
 
 export type DailyGoal = {

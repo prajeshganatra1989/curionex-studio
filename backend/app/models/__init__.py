@@ -13,6 +13,7 @@ from app.models.ai import (
 from app.models.audit import AuditLog
 from app.models.content_version import Approval, ContentVersion
 from app.models.knowledge_pack import KnowledgePack, KnowledgePackSection
+from app.models.production import ProductionSettings
 from app.models.project import Category, Project, ProjectMember, ProjectTag, Tag
 from app.models.rbac import Permission, Role, RolePermission, UserRole
 from app.models.script import Script, ScriptDocument
@@ -36,6 +37,7 @@ __all__ = [
     "KnowledgePack",
     "KnowledgePackSection",
     "Permission",
+    "ProductionSettings",
     "Project",
     "ProjectMember",
     "ProjectTag",

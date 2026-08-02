@@ -1,6 +1,7 @@
 import {
   Activity,
   CheckSquare,
+  Factory,
   FileText,
   FolderKanban,
   Layers3,
@@ -19,6 +20,7 @@ export type NavItem = {
 
 export const MAIN_NAV: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/production", label: "Production", icon: Factory },
   { href: "/projects", label: "Projects", icon: FolderKanban },
   { href: "/knowledge-packs", label: "Knowledge Packs", icon: BookOpen },
   { href: "/scripts", label: "Scripts", icon: FileText },

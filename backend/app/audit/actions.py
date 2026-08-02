@@ -101,3 +101,6 @@ ACTION_AI_PROVIDER_CREDENTIALS_SET = "ai.provider_credentials_set"
 ACTION_AI_PROVIDER_CREDENTIALS_CLEARED = "ai.provider_credentials_cleared"
 ACTION_AI_MODEL_UPDATED = "ai.model_updated"
 ACTION_KNOWLEDGE_PACK_AI_DRAFT_APPLIED = "knowledge_pack.ai_draft_applied"
+
+ENTITY_PRODUCTION_SETTINGS = "production_settings"
+ACTION_PRODUCTION_SETTINGS_UPDATED = "production.settings_updated"

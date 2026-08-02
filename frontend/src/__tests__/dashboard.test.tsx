@@ -49,18 +49,20 @@ const liveDashboard: DashboardData = {
     projects: 3,
     knowledgePacks: 28,
     scripts: 64,
-    draftScripts: 18,
+    needingRevision: 4,
     pendingReviews: 5,
     approvedScripts: 31,
+    aiRunning: 2,
     isDemo: true,
     projectsLive: true,
     pendingReviewsLive: true,
+    productionLive: true,
   },
   dailyGoal: {
-    label: "2 videos per day",
+    label: "2 approved scripts per day",
     completed: 1,
     target: 2,
-    isDemo: true,
+    isDemo: false,
   },
   recentProjects: [
     {
@@ -113,5 +115,10 @@ describe("DashboardPage", () => {
     expect(screen.getAllByText("Live").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole("heading", { name: "Recent Projects" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Recent Scripts" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /open production mode/i }),
+    ).toHaveAttribute("href", "/production");
+    expect(screen.getByText("Needs Revision")).toBeInTheDocument();
+    expect(screen.getByTestId("ai-running-hint")).toHaveTextContent(/AI running:\s*2/);
   });
 });
