@@ -1,5 +1,6 @@
 import { ApiError, type ApiClient } from "@/lib/api/client";
 import { listApprovals } from "@/lib/api/approvals";
+import { getProductionOverview } from "@/lib/api/production";
 import { listProjects } from "@/lib/api/projects";
 import type { DashboardData } from "@/lib/dashboard/types";
 import { initials } from "@/lib/utils";
@@ -8,16 +9,14 @@ import { initials } from "@/lib/utils";
  * Isolated deterministic mock dashboard payload for modules that are not
  * live yet. Components must not hard-code these values — load via getDashboardData().
  *
- * Live in Sprint 2:
+ * Live:
  * - Projects metric (list total)
  * - Recent Projects panel
- *
- * Live in Sprint 3:
  * - Pending Reviews metric + panel (GET /approvals?status=pending)
+ * - Approved scripts, daily goal, needing revision, AI running (production overview)
  *
  * Still demo:
- * - Knowledge Packs / Scripts / Drafts / Approved metrics
- * - Daily goal
+ * - Knowledge Packs / Scripts metrics
  * - Recent Scripts / Activity
  */
 export const DEMO_DASHBOARD: DashboardData = {
@@ -25,12 +24,14 @@ export const DEMO_DASHBOARD: DashboardData = {
     projects: 12,
     knowledgePacks: 28,
     scripts: 64,
-    draftScripts: 18,
+    needingRevision: 0,
     pendingReviews: 5,
     approvedScripts: 31,
+    aiRunning: 0,
     isDemo: true,
     projectsLive: false,
     pendingReviewsLive: false,
+    productionLive: false,
   },
   dailyGoal: {
     label: "2 videos per day",
@@ -186,7 +187,29 @@ export async function getDashboardData(api: ApiClient): Promise<DashboardData> {
     }
   }
 
-  const metricsStillDemo = true; // KP / Scripts / Approved metrics remain demo-backed.
+  let approvedScripts = DEMO_DASHBOARD.metrics.approvedScripts;
+  let needingRevision = DEMO_DASHBOARD.metrics.needingRevision;
+  let aiRunning = DEMO_DASHBOARD.metrics.aiRunning;
+  let productionLive = false;
+  let dailyGoal = DEMO_DASHBOARD.dailyGoal;
+
+  try {
+    const overview = await getProductionOverview(api);
+    approvedScripts = overview.goals.approved_total;
+    needingRevision = overview.quality.scripts_needing_revision;
+    aiRunning = overview.ai.running;
+    productionLive = true;
+    dailyGoal = {
+      label: `${overview.goals.daily_target} approved scripts per day`,
+      completed: overview.goals.approved_today,
+      target: overview.goals.daily_target,
+      isDemo: false,
+    };
+  } catch {
+    // Keep demo values when production.view is unavailable.
+  }
+
+  const metricsStillDemo = true; // KP / Scripts remain demo-backed.
 
   return {
     ...DEMO_DASHBOARD,
@@ -196,8 +219,13 @@ export async function getDashboardData(api: ApiClient): Promise<DashboardData> {
       projectsLive: true,
       pendingReviews: pendingReviewsTotal,
       pendingReviewsLive,
+      approvedScripts,
+      needingRevision,
+      aiRunning,
+      productionLive,
       isDemo: metricsStillDemo,
     },
+    dailyGoal,
     recentProjects: projects.items.map((project) => ({
       id: project.id,
       projectCode: project.project_code,

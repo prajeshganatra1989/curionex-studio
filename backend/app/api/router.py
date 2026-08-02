@@ -10,6 +10,7 @@ from app.api.routes import (
     content_versions,
     health,
     knowledge_packs,
+    production,
     projects,
     rbac,
     scripts,
@@ -35,3 +36,4 @@ api_router.include_router(scripts.project_scripts_router)
 api_router.include_router(scripts.scripts_router)
 api_router.include_router(workflows.workflows_router)
 api_router.include_router(ai.router)
+api_router.include_router(production.router)

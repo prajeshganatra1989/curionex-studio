@@ -3,12 +3,14 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import {
+  AlertTriangle,
   BookOpen,
   CheckCircle2,
   ClipboardList,
+  Factory,
   FileText,
   FolderKanban,
-  PenLine,
+  Sparkles,
 } from "lucide-react";
 
 import { ActivityTimeline } from "@/components/dashboard/activity-timeline";
@@ -117,6 +119,14 @@ export function DashboardPage() {
           <p className="mt-2 max-w-xl text-sm text-muted-foreground sm:text-base">
             Ready to create something amazing today?
           </p>
+          <Link
+            href="/production"
+            data-testid="open-production-mode"
+            className="mt-3 inline-flex w-fit items-center gap-2 rounded-lg border border-brand-orange/35 bg-brand-orange/10 px-3 py-2 text-sm font-medium text-brand-amber transition hover:bg-brand-orange/15"
+          >
+            <Factory className="h-4 w-4" aria-hidden />
+            Open Production Mode
+          </Link>
         </div>
         <div className="w-full max-w-sm shrink-0 lg:w-80">
           <DailyGoalCard goal={data.dailyGoal} />
@@ -149,17 +159,17 @@ export function DashboardPage() {
           isDemo
         />
         <MetricCard
-          label="Draft Scripts"
-          value={metrics.draftScripts}
-          hint="In progress"
-          icon={PenLine}
+          label="Needs Revision"
+          value={metrics.needingRevision}
+          hint="From production quality"
+          icon={AlertTriangle}
           accent="warning"
-          isDemo
+          isDemo={!metrics.productionLive}
         />
         <MetricCard
           label="Pending Reviews"
           value={metrics.pendingReviews}
-          hint="Awaiting review"
+          hint="Awaiting human review"
           icon={ClipboardList}
           accent="warning"
           isDemo={!metrics.pendingReviewsLive}
@@ -167,12 +177,31 @@ export function DashboardPage() {
         <MetricCard
           label="Approved Scripts"
           value={metrics.approvedScripts}
-          hint="Completed"
+          hint={
+            metrics.productionLive
+              ? "Toward production goal"
+              : "Completed"
+          }
           icon={CheckCircle2}
           accent="success"
-          isDemo
+          isDemo={!metrics.productionLive}
         />
       </div>
+
+      {metrics.productionLive ? (
+        <p
+          className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
+          data-testid="ai-running-hint"
+        >
+          <Sparkles className="h-3.5 w-3.5" aria-hidden />
+          AI running:{" "}
+          <span className="tabular-nums text-foreground">
+            {metrics.aiRunning}
+          </span>
+          <span aria-hidden>·</span>
+          Quality scores are advisory — never treated as Approved.
+        </p>
+      ) : null}
 
       <div className="mt-4 grid gap-4 xl:grid-cols-3">
         <SectionPanel

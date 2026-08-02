@@ -170,6 +170,16 @@ PERMISSION_CATALOG: list[dict[str, str]] = [
         "name": "Manage prompts",
         "description": "Create and version AI prompts",
     },
+    {
+        "code": "production.view",
+        "name": "View Production Mode",
+        "description": "View Production Mode overview, queue, and metrics",
+    },
+    {
+        "code": "production.manage",
+        "name": "Manage production goals",
+        "description": "Manage Production Mode goals and settings",
+    },
 ]
 
 ALL_PERMISSION_CODES: list[str] = [item["code"] for item in PERMISSION_CATALOG]
@@ -208,6 +218,8 @@ ROLE_CATALOG: dict[str, dict] = {
             "ai.manage",
             "ai.generate",
             "prompt.manage",
+            "production.view",
+            "production.manage",
         ],
     },
     "Script Writer": {
@@ -228,6 +240,7 @@ ROLE_CATALOG: dict[str, dict] = {
             "ai.view",
             "ai.generate",
             "prompt.manage",
+            "production.view",
         ],
     },
     "Reviewer": {
@@ -244,6 +257,7 @@ ROLE_CATALOG: dict[str, dict] = {
             "approvals.reject",
             "approvals.review",
             "ai.view",
+            "production.view",
         ],
     },
 }

@@ -35,8 +35,8 @@ export function DailyGoalCard({ goal }: DailyGoalCardProps) {
           <p className="mt-2 text-lg font-semibold text-foreground">
             <span className="tabular-nums">
               {goal.completed} / {goal.target}
-            </span>{" "}
-            Videos
+            </span>
+            {goal.isDemo ? " Videos" : " Approved"}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">{goal.label}</p>
         </div>
