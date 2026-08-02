@@ -59,6 +59,11 @@ ACTION_SCRIPT_UPDATED = "script.updated"
 ACTION_SCRIPT_ARCHIVED = "script.archived"
 ACTION_SCRIPT_DOCUMENT_UPDATED = "script.document_updated"
 
+ACTION_SCRIPT_AI_DRAFT_REQUESTED = "script.ai_draft_requested"
+ACTION_SCRIPT_AI_DRAFT_COMPLETED = "script.ai_draft_completed"
+ACTION_SCRIPT_AI_DRAFT_FAILED = "script.ai_draft_failed"
+ACTION_SCRIPT_AI_DRAFT_APPLIED = "script.ai_draft_applied"
+
 ENTITY_WORKFLOW = "workflow"
 
 ACTION_WORKFLOW_CREATED = "workflow.created"

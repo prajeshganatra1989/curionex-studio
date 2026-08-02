@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useEffect, useRef } from "react";
+import { Sparkles } from "lucide-react";
 
 import { CharacterCounter } from "@/components/knowledge-packs/character-counter";
 import { WordCounter } from "@/components/knowledge-packs/word-counter";
@@ -19,6 +20,7 @@ type ScriptDocumentEditorProps = {
   onChange: (value: string) => void;
   onRetry: () => void;
   active?: boolean;
+  onGenerateAiDraft?: () => void;
 };
 
 export const ScriptDocumentEditor = memo(function ScriptDocumentEditor({
@@ -31,6 +33,7 @@ export const ScriptDocumentEditor = memo(function ScriptDocumentEditor({
   onChange,
   onRetry,
   active,
+  onGenerateAiDraft,
 }: ScriptDocumentEditorProps) {
   const ref = useRef<HTMLTextAreaElement>(null);
 
@@ -54,16 +57,30 @@ export const ScriptDocumentEditor = memo(function ScriptDocumentEditor({
       aria-labelledby={`document-title-${meta.type}`}
       className="scroll-mt-28 py-8 first:pt-2"
     >
-      <header className="mb-4">
-        <h2
-          id={`document-title-${meta.type}`}
-          className="text-xl font-semibold tracking-tight text-foreground"
-        >
-          {meta.title}
-        </h2>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          {meta.description}
-        </p>
+      <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2
+            id={`document-title-${meta.type}`}
+            className="text-xl font-semibold tracking-tight text-foreground"
+          >
+            {meta.title}
+          </h2>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+            {meta.description}
+          </p>
+        </div>
+        {onGenerateAiDraft && !readOnly ? (
+          <Button
+            type="button"
+            variant="secondary"
+            className="h-9 shrink-0"
+            onClick={onGenerateAiDraft}
+            data-testid={`generate-ai-draft-${meta.type}`}
+          >
+            <Sparkles className="h-4 w-4" />
+            Generate AI Draft
+          </Button>
+        ) : null}
       </header>
 
       <label className="sr-only" htmlFor={`editor-${meta.type}`}>

@@ -9,11 +9,13 @@ import {
 import {
   activatePromptVersion,
   applyKnowledgePackAiDraft,
+  applyScriptAiDraft,
   cancelJob,
   createJob,
   createKnowledgePackAiDraft,
   createPrompt,
   createPromptVersion,
+  createScriptAiDraft,
   deleteProviderCredentials,
   findGenerationIdForJob,
   getAiSettings,
@@ -22,12 +24,15 @@ import {
   getModel,
   getPrompt,
   getProvider,
+  getScriptAiPrerequisites,
   listGenerations,
   listJobs,
   listModels,
   listPrompts,
   listPromptVersions,
   listProviders,
+  listScriptAiDrafts,
+  listScriptDocumentAiDrafts,
   setProviderCredentials,
   updateAiSettings,
   updateModel,
@@ -49,6 +54,8 @@ import type {
   AiModelUpdateInput,
   KnowledgePackAiDraftApplyInput,
   KnowledgePackAiDraftCreateInput,
+  ScriptAiDraftApplyInput,
+  ScriptAiDraftCreateInput,
 } from "@/lib/ai/types";
 import { useAuth } from "@/lib/auth/auth-context";
 
@@ -80,6 +87,16 @@ export const aiKeys = {
   generationList: (params: AiGenerationListParams) =>
     [...aiKeys.generations(), "list", params] as const,
   generation: (id: string) => [...aiKeys.generations(), "detail", id] as const,
+  scriptDrafts: (scriptId: string) =>
+    [...aiKeys.all, "script-drafts", scriptId] as const,
+  scriptDraftList: (
+    scriptId: string,
+    params: { document_type?: string; page?: number; page_size?: number },
+  ) => [...aiKeys.scriptDrafts(scriptId), "list", params] as const,
+  scriptDocumentDrafts: (scriptId: string, documentType: string) =>
+    [...aiKeys.scriptDrafts(scriptId), "document", documentType] as const,
+  scriptPrerequisites: (scriptId: string, documentType: string) =>
+    [...aiKeys.scriptDrafts(scriptId), "prerequisites", documentType] as const,
 };
 
 export function useAiProviders() {
@@ -384,6 +401,98 @@ export function useApplyKnowledgePackAiDraft(knowledgePackId: string) {
     onSuccess: (result) => {
       void qc.invalidateQueries({
         queryKey: aiKeys.generation(result.generation_id),
+      });
+    },
+  });
+}
+
+export function useCreateScriptAiDraft(
+  scriptId: string,
+  documentType: string,
+) {
+  const { api } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: ScriptAiDraftCreateInput) =>
+      createScriptAiDraft(api, scriptId, documentType, payload),
+    onSuccess: (job) => {
+      qc.setQueryData(aiKeys.job(job.id), job);
+      void qc.invalidateQueries({ queryKey: aiKeys.jobs() });
+      void qc.invalidateQueries({
+        queryKey: aiKeys.scriptDrafts(scriptId),
+      });
+    },
+  });
+}
+
+export function useScriptAiDrafts(
+  scriptId: string,
+  params: { document_type?: string; page?: number; page_size?: number } = {},
+) {
+  const { api, status } = useAuth();
+  return useQuery({
+    queryKey: aiKeys.scriptDraftList(scriptId, params),
+    queryFn: () => listScriptAiDrafts(api, scriptId, params),
+    enabled: status === "authenticated" && Boolean(scriptId),
+  });
+}
+
+export function useScriptDocumentAiDrafts(
+  scriptId: string,
+  documentType: string,
+  params: { page?: number; page_size?: number } = {},
+) {
+  const { api, status } = useAuth();
+  return useQuery({
+    queryKey: [
+      ...aiKeys.scriptDocumentDrafts(scriptId, documentType),
+      params,
+    ] as const,
+    queryFn: () =>
+      listScriptDocumentAiDrafts(api, scriptId, documentType, params),
+    enabled:
+      status === "authenticated" && Boolean(scriptId) && Boolean(documentType),
+  });
+}
+
+export function useScriptAiPrerequisites(
+  scriptId: string,
+  documentType: string,
+  options: { enabled?: boolean } = {},
+) {
+  const { api, status } = useAuth();
+  return useQuery({
+    queryKey: aiKeys.scriptPrerequisites(scriptId, documentType),
+    queryFn: () => getScriptAiPrerequisites(api, scriptId, documentType),
+    enabled:
+      status === "authenticated" &&
+      Boolean(scriptId) &&
+      Boolean(documentType) &&
+      (options.enabled ?? true),
+  });
+}
+
+export function useApplyScriptAiDraft(
+  scriptId: string,
+  documentType: string,
+) {
+  const { api } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      generationId,
+      payload,
+    }: {
+      generationId: string;
+      payload: ScriptAiDraftApplyInput;
+    }) =>
+      applyScriptAiDraft(api, scriptId, documentType, generationId, payload),
+    onSuccess: (result) => {
+      void qc.invalidateQueries({
+        queryKey: aiKeys.generation(result.generation_id),
+      });
+      void qc.invalidateQueries({
+        queryKey: aiKeys.scriptDrafts(scriptId),
       });
     },
   });

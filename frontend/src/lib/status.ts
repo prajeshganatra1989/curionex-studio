@@ -9,6 +9,7 @@ export const STATUS_LABELS: Record<string, string> = {
   completed: "Completed",
   pending: "Pending",
   blocked: "Blocked",
+  ready: "Ready",
   versioning: "Versioning",
   review: "Review",
   workspace: "Workspace",
@@ -47,6 +48,7 @@ export function statusTone(status: string): StatusTone {
       return "muted";
     case "draft":
     case "info":
+    case "ready":
       return "info";
     case "archived":
       return "muted";

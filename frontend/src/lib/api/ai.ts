@@ -22,6 +22,10 @@ import type {
   KnowledgePackAiDraftApplyResponse,
   KnowledgePackAiDraftCreateInput,
   PaginatedResponse,
+  ScriptAiDraftApplyInput,
+  ScriptAiDraftApplyResponse,
+  ScriptAiDraftCreateInput,
+  ScriptAiPrerequisitesResponse,
 } from "@/lib/ai/types";
 
 function toQuery(params: Record<string, string | number | undefined | null>) {
@@ -177,6 +181,18 @@ export function listGenerations(
     `/ai/generations${toQuery({
       page: params.page,
       page_size: params.page_size,
+      project_id: params.project_id,
+      script_id: params.script_id,
+      document_type: params.document_type,
+      purpose: params.purpose,
+      provider_id: params.provider_id,
+      model_id: params.model_id,
+      applied:
+        params.applied === undefined
+          ? undefined
+          : params.applied
+            ? "true"
+            : "false",
     })}`,
   );
 }
@@ -209,13 +225,78 @@ export function applyKnowledgePackAiDraft(
   );
 }
 
+export function createScriptAiDraft(
+  client: ApiClient,
+  scriptId: string,
+  documentType: string,
+  payload: ScriptAiDraftCreateInput,
+) {
+  return client.post<AiJob>(
+    `/scripts/${scriptId}/documents/${documentType}/ai-drafts`,
+    payload,
+  );
+}
+
+export function listScriptAiDrafts(
+  client: ApiClient,
+  scriptId: string,
+  params: {
+    document_type?: string;
+    page?: number;
+    page_size?: number;
+  } = {},
+) {
+  return client.get<PaginatedResponse<AiGeneration>>(
+    `/scripts/${scriptId}/ai-drafts${toQuery({
+      document_type: params.document_type,
+      page: params.page,
+      page_size: params.page_size,
+    })}`,
+  );
+}
+
+export function listScriptDocumentAiDrafts(
+  client: ApiClient,
+  scriptId: string,
+  documentType: string,
+  params: { page?: number; page_size?: number } = {},
+) {
+  return client.get<PaginatedResponse<AiGeneration>>(
+    `/scripts/${scriptId}/documents/${documentType}/ai-drafts${toQuery({
+      page: params.page,
+      page_size: params.page_size,
+    })}`,
+  );
+}
+
+export function getScriptAiPrerequisites(
+  client: ApiClient,
+  scriptId: string,
+  documentType: string,
+) {
+  return client.get<ScriptAiPrerequisitesResponse>(
+    `/scripts/${scriptId}/documents/${documentType}/ai-prerequisites`,
+  );
+}
+
+export function applyScriptAiDraft(
+  client: ApiClient,
+  scriptId: string,
+  documentType: string,
+  generationId: string,
+  payload: ScriptAiDraftApplyInput,
+) {
+  return client.post<ScriptAiDraftApplyResponse>(
+    `/scripts/${scriptId}/documents/${documentType}/ai-generations/${generationId}/apply`,
+    payload,
+  );
+}
+
 /**
  * Best-effort lookup of the generation produced by a job.
  *
- * The API does not expose a job -> generation link directly, but every
- * generation records its `job_id`, and generations are listed newest-first.
- * Knowledge Pack draft jobs execute synchronously, so the matching
- * generation is reliably near the top of the first page.
+ * Prefer `job.generation_id` when the API returns it. Otherwise fall back to
+ * scanning recent generations by `job_id` (newest-first).
  */
 export async function findGenerationIdForJob(
   client: ApiClient,

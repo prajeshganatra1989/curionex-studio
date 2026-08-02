@@ -123,6 +123,8 @@ def _job_response(job: AiJob, db: Session | None = None) -> AiJobResponse:
         purpose=getattr(job, "purpose", None),
         knowledge_pack_id=getattr(job, "knowledge_pack_id", None),
         project_id=getattr(job, "project_id", None),
+        script_id=getattr(job, "script_id", None),
+        document_type=getattr(job, "document_type", None),
         idempotency_key=getattr(job, "idempotency_key", None),
         cancel_requested=bool(getattr(job, "cancel_requested", False)),
         generation_id=generation_id,
@@ -135,7 +137,17 @@ def _job_response(job: AiJob, db: Session | None = None) -> AiJobResponse:
     )
 
 
-def _generation_response(item) -> AiGenerationResponse:
+def _generation_response(item, db: Session | None = None) -> AiGenerationResponse:
+    stale_input = None
+    if db is not None and getattr(item, "script_id", None) and getattr(
+        item, "document_type", None
+    ):
+        from app.services import script_ai_service
+
+        try:
+            stale_input = script_ai_service.is_generation_stale(db, item)
+        except Exception:  # noqa: BLE001 — listing must not fail on stale check
+            stale_input = None
     return AiGenerationResponse(
         id=item.id,
         job_id=item.job_id,
@@ -148,6 +160,8 @@ def _generation_response(item) -> AiGenerationResponse:
         purpose=getattr(item, "purpose", None),
         knowledge_pack_id=getattr(item, "knowledge_pack_id", None),
         project_id=getattr(item, "project_id", None),
+        script_id=getattr(item, "script_id", None),
+        document_type=getattr(item, "document_type", None),
         tokens_input=item.tokens_input,
         tokens_output=item.tokens_output,
         tokens_total=getattr(item, "tokens_total", None),
@@ -161,6 +175,9 @@ def _generation_response(item) -> AiGenerationResponse:
             str(x) for x in (getattr(item, "applied_sections_json", None) or [])
         ],
         applied_at=getattr(item, "applied_at", None),
+        warnings=[str(x) for x in (getattr(item, "warnings_json", None) or [])],
+        input_fingerprint=getattr(item, "input_fingerprint_json", None),
+        stale_input=stale_input,
         created_at=item.created_at,
     )
 
@@ -546,10 +563,30 @@ def get_generations(
     _: Annotated[User, Depends(require_permission("ai.view"))],
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+    project_id: Annotated[UUID | None, Query()] = None,
+    script_id: Annotated[UUID | None, Query()] = None,
+    document_type: Annotated[str | None, Query()] = None,
+    purpose: Annotated[str | None, Query()] = None,
+    provider_id: Annotated[UUID | None, Query()] = None,
+    model_id: Annotated[UUID | None, Query()] = None,
+    knowledge_pack_id: Annotated[UUID | None, Query()] = None,
+    applied: Annotated[bool | None, Query()] = None,
 ) -> AiGenerationListResponse:
-    items, total = ai_service.list_generations(db, page=page, page_size=page_size)
+    items, total = ai_service.list_generations(
+        db,
+        page=page,
+        page_size=page_size,
+        project_id=project_id,
+        script_id=script_id,
+        document_type=document_type,
+        purpose=purpose,
+        provider_id=provider_id,
+        model_id=model_id,
+        knowledge_pack_id=knowledge_pack_id,
+        applied=applied,
+    )
     return AiGenerationListResponse(
-        items=[_generation_response(item) for item in items],
+        items=[_generation_response(item, db) for item in items],
         page=page,
         page_size=page_size,
         total=total,
@@ -566,7 +603,7 @@ def get_generation(
         item = ai_service.get_generation(db, generation_id)
     except ai_service.NotFoundError as exc:
         raise _map_error(exc) from None
-    return _generation_response(item)
+    return _generation_response(item, db)
 
 
 @router.get("/settings", response_model=AiSettingsResponse)

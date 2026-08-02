@@ -69,8 +69,12 @@ export type AiJob = {
   purpose?: string | null;
   knowledge_pack_id?: string | null;
   project_id?: string | null;
+  script_id?: string | null;
+  document_type?: string | null;
   idempotency_key?: string | null;
   cancel_requested?: boolean;
+  /** Present when a completed job already has a generation row. */
+  generation_id?: string | null;
   started_at: string | null;
   finished_at: string | null;
   duration_ms: number | null;
@@ -78,6 +82,32 @@ export type AiJob = {
   error_message: string | null;
   created_at: string;
 };
+
+/** Script Document types that support AI drafting. */
+export type ScriptAiDocumentType =
+  | "discovery_brief"
+  | "story_spine"
+  | "master_script";
+
+export const SCRIPT_AI_DOCUMENT_TYPES: ScriptAiDocumentType[] = [
+  "discovery_brief",
+  "story_spine",
+  "master_script",
+];
+
+export const SCRIPT_AI_PURPOSE_BY_DOCUMENT: Record<
+  ScriptAiDocumentType,
+  string
+> = {
+  discovery_brief: "script.discovery_brief.draft",
+  story_spine: "script.story_spine.draft",
+  master_script: "script.master_script.draft",
+};
+
+export type ScriptAiConflictStrategy =
+  | "reject_if_non_empty"
+  | "replace"
+  | "append";
 
 /** A single reference cited by an AI draft. Always unverified — never trust as fact. */
 export type KnowledgePackDraftSource = {
@@ -135,6 +165,8 @@ export type AiGeneration = {
   purpose?: string | null;
   knowledge_pack_id?: string | null;
   project_id?: string | null;
+  script_id?: string | null;
+  document_type?: string | null;
   tokens_input: number | null;
   tokens_output: number | null;
   tokens_total?: number | null;
@@ -147,6 +179,9 @@ export type AiGeneration = {
   /** Section keys already applied to a Knowledge Pack from this generation. */
   applied_sections?: string[];
   applied_at?: string | null;
+  warnings?: string[];
+  input_fingerprint?: Record<string, unknown> | null;
+  stale_input?: boolean | null;
   created_at: string;
 };
 
@@ -154,6 +189,10 @@ export type AiSettings = {
   default_model_id: string | null;
   default_temperature: number;
   default_max_tokens: number;
+  brand_voice?: string | null;
+  quality_requirements?: string | null;
+  default_target_duration_seconds?: number;
+  default_target_words_per_minute?: number;
   [key: string]: unknown;
 };
 
@@ -180,6 +219,14 @@ export type AiJobListParams = {
 export type AiGenerationListParams = {
   page?: number;
   page_size?: number;
+  project_id?: string;
+  script_id?: string;
+  document_type?: string;
+  purpose?: string;
+  provider_id?: string;
+  model_id?: string;
+  /** When set, filter to generations that have / have not been applied. */
+  applied?: boolean;
 };
 
 export type AiPromptCreateInput = {
@@ -225,8 +272,58 @@ export type AiJobCreateInput = {
 };
 
 export type AiSettingsUpdateInput = Partial<
-  Pick<AiSettings, "default_model_id" | "default_temperature" | "default_max_tokens">
+  Pick<
+    AiSettings,
+    | "default_model_id"
+    | "default_temperature"
+    | "default_max_tokens"
+    | "brand_voice"
+    | "quality_requirements"
+    | "default_target_duration_seconds"
+    | "default_target_words_per_minute"
+  >
 >;
+
+export type ScriptAiDraftCreateInput = {
+  model_id?: string | null;
+  language: string;
+  tone: string;
+  target_duration_seconds?: number | null;
+  target_words_per_minute?: number | null;
+  idempotency_key?: string | null;
+};
+
+export type ScriptAiDraftApplyInput = {
+  conflict_strategy: ScriptAiConflictStrategy;
+};
+
+export type ScriptAiDraftApplyResponse = {
+  document: {
+    id: string;
+    script_id: string;
+    document_type: string;
+    title: string;
+    content: string;
+    position: number;
+    created_at: string;
+    updated_at: string;
+  };
+  generation_id: string;
+  conflict_strategy: ScriptAiConflictStrategy;
+  stale_input: boolean;
+};
+
+export type ScriptAiPrerequisitesResponse = {
+  document_type: string;
+  ready: boolean;
+  missing: string[];
+};
+
+/** Structured 409 conflict detail when applying to a non-empty script document. */
+export type ScriptAiDraftConflictDetail = {
+  message: string;
+  conflicts?: string[];
+};
 
 export type KnowledgePackAiDraftCreateInput = {
   model_id?: string | null;

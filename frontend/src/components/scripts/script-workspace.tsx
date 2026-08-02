@@ -12,7 +12,10 @@ import {
 } from "react";
 
 import { SectionDrawer } from "@/components/knowledge-packs/section-drawer";
+import { GenerateScriptAiDraftDialog } from "@/components/scripts/generate-script-ai-draft-dialog";
 import { KnowledgePackContextPanel } from "@/components/scripts/knowledge-pack-context-panel";
+import { ScriptAiDraftReviewPanel } from "@/components/scripts/script-ai-draft-review-panel";
+import { ScriptAiPipelinePanel } from "@/components/scripts/script-ai-pipeline-panel";
 import { ScriptDocumentEditor } from "@/components/scripts/script-document-editor";
 import { ScriptDocumentNavigator } from "@/components/scripts/script-document-navigator";
 import { ScriptHeader } from "@/components/scripts/script-header";
@@ -31,6 +34,7 @@ import { Field, TextArea, TextInput, TextSelect } from "@/components/ui/field";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
+import type { ScriptAiDocumentType } from "@/lib/ai/types";
 import { ApiError } from "@/lib/api/client";
 import { updateScriptDocument } from "@/lib/api/projects";
 import type { ScriptDocument, ScriptDocumentType } from "@/lib/api/types";
@@ -119,6 +123,13 @@ export function ScriptWorkspace() {
   const [leaveOpen, setLeaveOpen] = useState(false);
   const leaveHref = useRef<string | null>(null);
   const savingRef = useRef(false);
+  const [aiDraftDocumentType, setAiDraftDocumentType] =
+    useState<ScriptAiDocumentType | null>(null);
+  const [aiReviewGenerationId, setAiReviewGenerationId] = useState<
+    string | null
+  >(null);
+  const [aiReviewDocumentType, setAiReviewDocumentType] =
+    useState<ScriptAiDocumentType | null>(null);
 
   const packId = scriptQuery.data?.knowledge_pack_id ?? null;
   const packQuery = useKnowledgePack(packId ?? "");
@@ -269,6 +280,49 @@ export function ScriptWorkspace() {
   async function ensureSaved(): Promise<boolean> {
     if (!isDirty) return true;
     return saveDocuments(dirtyKeys);
+  }
+
+  function openAiDraft(documentType: ScriptAiDocumentType) {
+    setAiDraftDocumentType(documentType);
+    focusDocument(documentType);
+  }
+
+  function handleDraftReady(generationId: string) {
+    const documentType = aiDraftDocumentType;
+    setAiDraftDocumentType(null);
+    if (!documentType) return;
+    setAiReviewDocumentType(documentType);
+    setAiReviewGenerationId(generationId);
+  }
+
+  async function handleDraftApplied({
+    document,
+  }: {
+    document: ScriptDocument;
+    generationId: string;
+    staleInput: boolean;
+  }) {
+    const documentType = document.document_type as ScriptAiDocumentType;
+    setAiReviewGenerationId(null);
+    setAiReviewDocumentType(null);
+
+    // Refresh only the applied document; preserve dirty drafts on other docs.
+    setDrafts((prev) => ({ ...prev, [documentType]: document.content }));
+    setBaseline((prev) => ({ ...prev, [documentType]: document.content }));
+    setSavedAt((prev) => ({ ...prev, [documentType]: document.updated_at }));
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next[documentType];
+      return next;
+    });
+
+    void queryClient.invalidateQueries({ queryKey: scriptKeys.detail(scriptId) });
+
+    toast({
+      title: "AI draft applied",
+      description: `${DOCUMENT_ORDER.find((d) => d.type === documentType)?.title ?? "Document"} updated. Review before creating a version.`,
+      tone: "success",
+    });
   }
 
   useEffect(() => {
@@ -625,6 +679,11 @@ export function ScriptWorkspace() {
                 active={activeType === meta.type}
                 onChange={(value) => onDocumentChange(meta.type, value)}
                 onRetry={() => void saveDocuments([meta.type])}
+                onGenerateAiDraft={
+                  readOnly
+                    ? undefined
+                    : () => openAiDraft(meta.type as ScriptAiDocumentType)
+                }
               />
             ))}
           </div>
@@ -632,6 +691,14 @@ export function ScriptWorkspace() {
 
         <div className="hidden space-y-4 xl:block">
           <div className="sticky top-32 space-y-4">
+            {!readOnly ? (
+              <ScriptAiPipelinePanel
+                contents={drafts}
+                activeType={activeType}
+                onGenerate={openAiDraft}
+                onFocusDocument={focusDocument}
+              />
+            ) : null}
             <ScriptProgressPanel contents={drafts} />
             <WorkflowPanel
               workflow={workflowQuery.data}
@@ -679,6 +746,20 @@ export function ScriptWorkspace() {
             />
           ) : (
             <>
+              {!readOnly ? (
+                <ScriptAiPipelinePanel
+                  contents={drafts}
+                  activeType={activeType}
+                  onGenerate={(type) => {
+                    setRightDrawer(null);
+                    openAiDraft(type);
+                  }}
+                  onFocusDocument={(type) => {
+                    setRightDrawer(null);
+                    focusDocument(type);
+                  }}
+                />
+              ) : null}
               <ScriptProgressPanel contents={drafts} />
               <WorkflowPanel
                 workflow={workflowQuery.data}
@@ -844,6 +925,44 @@ export function ScriptWorkspace() {
           })();
         }}
       />
+
+      {aiDraftDocumentType ? (
+        <GenerateScriptAiDraftDialog
+          open
+          onClose={() => setAiDraftDocumentType(null)}
+          scriptId={scriptId}
+          documentType={aiDraftDocumentType}
+          scriptTitle={script.title}
+          isDirty={isDirty}
+          onSaveThenGenerate={ensureSaved}
+          onDraftReady={handleDraftReady}
+        />
+      ) : null}
+
+      <Modal
+        open={Boolean(aiReviewGenerationId && aiReviewDocumentType)}
+        onClose={() => {
+          setAiReviewGenerationId(null);
+          setAiReviewDocumentType(null);
+        }}
+        title="Review AI Draft"
+        description="Compare the generated draft with the current document, then apply when ready."
+        size="lg"
+      >
+        {aiReviewGenerationId && aiReviewDocumentType ? (
+          <ScriptAiDraftReviewPanel
+            scriptId={scriptId}
+            documentType={aiReviewDocumentType}
+            generationId={aiReviewGenerationId}
+            currentContent={drafts[aiReviewDocumentType] ?? ""}
+            onApplied={(result) => void handleDraftApplied(result)}
+            onClose={() => {
+              setAiReviewGenerationId(null);
+              setAiReviewDocumentType(null);
+            }}
+          />
+        ) : null}
+      </Modal>
     </WorkspaceShell>
   );
 }

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import random
 import time
 from datetime import UTC, datetime
@@ -34,11 +35,23 @@ from app.ai.prompt_renderer import PromptRenderError, render_template
 from app.ai.providers import get_provider
 from app.ai.providers.base import GenerationRequest, ProviderNotImplementedError
 from app.ai.retry import decide_retry
+from app.ai.script_draft import (
+    MASTER_SCRIPT_MAX_REPAIR_ATTEMPTS,
+    PURPOSE_MASTER_SCRIPT,
+    SCRIPT_DRAFT_PURPOSES,
+    parse_master_script,
+    schema_and_parser_for_purpose,
+    target_word_range,
+    word_count,
+)
 from app.audit.actions import (
     ACTION_AI_JOB_COMPLETED,
     ACTION_AI_JOB_FAILED,
     ACTION_AI_JOB_STARTED,
+    ACTION_SCRIPT_AI_DRAFT_COMPLETED,
+    ACTION_SCRIPT_AI_DRAFT_FAILED,
     ENTITY_AI_JOB,
+    ENTITY_SCRIPT,
 )
 from app.models.ai import (
     AiGeneration,
@@ -51,6 +64,111 @@ from app.models.ai import (
 )
 from app.models.user import User
 from app.services.audit_service import record_audit_event
+
+
+def _maybe_repair_master_script_duration(
+    *,
+    adapter,
+    request: GenerationRequest,
+    structured: dict,
+    variables: dict,
+    model: AiModel,
+    max_repairs: int,
+) -> tuple[dict, list[str], int, int, float]:
+    """One bounded repair attempt when narration word count is out of tolerance.
+
+    Completes with a warning if still mismatched — does not fail the job.
+    """
+    warnings: list[str] = []
+    repair_in = 0
+    repair_out = 0
+    repair_cost = 0.0
+
+    try:
+        duration = int(str(variables.get("target_duration_seconds", 60)))
+    except (TypeError, ValueError):
+        duration = 60
+    try:
+        wpm = int(str(variables.get("target_words_per_minute", 150)))
+    except (TypeError, ValueError):
+        wpm = 150
+
+    lo, target, hi = target_word_range(
+        target_duration_seconds=max(1, duration),
+        target_words_per_minute=max(1, wpm),
+    )
+    draft = parse_master_script(structured)
+    count = word_count(draft.narration)
+    if lo <= count <= hi:
+        return structured, warnings, repair_in, repair_out, repair_cost
+
+    if max_repairs < 1:
+        warnings.append(
+            f"Narration word count {count} outside target range "
+            f"{lo}-{hi} (target {target}); no repair attempted."
+        )
+        return structured, warnings, repair_in, repair_out, repair_cost
+
+    repair_request = GenerationRequest(
+        model_code=request.model_code,
+        system_prompt=(
+            request.system_prompt
+            + "\n\nDURATION CORRECTION ONLY: Rewrite the narration to approximately "
+            f"{target} words (acceptable {lo}-{hi}) while preserving meaning, hook, "
+            "and payoff. Return the same JSON schema."
+        ),
+        user_prompt=(
+            "Correct only the narration length for this Master Script draft JSON:\n"
+            + json.dumps(structured)
+        ),
+        temperature=request.temperature,
+        max_tokens=request.max_tokens,
+        response_json_schema=request.response_json_schema,
+        response_schema_name=request.response_schema_name,
+        supports_structured_output=request.supports_structured_output,
+        supports_temperature=request.supports_temperature,
+        api_key=request.api_key,
+        base_url=request.base_url,
+    )
+    try:
+        repaired = adapter.generate(repair_request)
+    except Exception:  # noqa: BLE001
+        warnings.append(
+            f"Narration word count {count} outside target range {lo}-{hi}; "
+            "duration repair call failed."
+        )
+        return structured, warnings, repair_in, repair_out, repair_cost
+
+    repair_in = repaired.tokens_input or 0
+    repair_out = repaired.tokens_output or 0
+    extra = estimate_cost_usd(
+        tokens_input=repaired.tokens_input,
+        tokens_output=repaired.tokens_output,
+        pricing_input_per_1k=model.pricing_input_per_1k,
+        pricing_output_per_1k=model.pricing_output_per_1k,
+    )
+    if extra:
+        repair_cost = extra
+
+    if repaired.structured_output:
+        try:
+            draft = parse_master_script(repaired.structured_output)
+            structured = draft.model_dump()
+            count = word_count(draft.narration)
+        except Exception:  # noqa: BLE001
+            warnings.append("Duration repair returned invalid structured output.")
+            return structured, warnings, repair_in, repair_out, repair_cost
+
+    if lo <= count <= hi:
+        warnings.append(
+            f"Duration repaired to {count} words (target range {lo}-{hi})."
+        )
+    else:
+        warnings.append(
+            f"Narration word count {count} still outside target range "
+            f"{lo}-{hi} after one repair attempt."
+        )
+    return structured, warnings, repair_in, repair_out, repair_cost
 
 
 def _utcnow() -> datetime:
@@ -176,6 +294,8 @@ def execute_job(
     if job.purpose == PURPOSE_KNOWLEDGE_PACK_DRAFT:
         schema = knowledge_pack_draft_json_schema()
         schema_name = "knowledge_pack_draft"
+    elif job.purpose in SCRIPT_DRAFT_PURPOSES:
+        schema, _parser, schema_name = schema_and_parser_for_purpose(job.purpose)
 
     request = GenerationRequest(
         model_code=model.code,
@@ -227,22 +347,54 @@ def execute_job(
         try:
             result = adapter.generate(request)
             structured = result.structured_output
+            warnings: list[str] = []
+            repair_tokens_in = 0
+            repair_tokens_out = 0
+            repair_cost_extra = 0.0
             if schema is not None:
                 if structured is None:
                     raise StructuredOutputError(
                         "Provider returned no structured output."
                     )
                 # Force verify status + schema validation.
-                draft = parse_knowledge_pack_draft(structured)
-                structured = draft.model_dump()
+                if job.purpose == PURPOSE_KNOWLEDGE_PACK_DRAFT:
+                    draft = parse_knowledge_pack_draft(structured)
+                    structured = draft.model_dump()
+                else:
+                    _, parser, _ = schema_and_parser_for_purpose(job.purpose)
+                    draft = parser(structured)
+                    structured = draft.model_dump()
+
+                    if job.purpose == PURPOSE_MASTER_SCRIPT:
+                        (
+                            structured,
+                            warnings,
+                            repair_tokens_in,
+                            repair_tokens_out,
+                            repair_cost_extra,
+                        ) = _maybe_repair_master_script_duration(
+                            adapter=adapter,
+                            request=request,
+                            structured=structured,
+                            variables=variables,
+                            model=model,
+                            max_repairs=MASTER_SCRIPT_MAX_REPAIR_ATTEMPTS,
+                        )
 
             finished = _utcnow()
+            tokens_input = (result.tokens_input or 0) + repair_tokens_in
+            tokens_output = (result.tokens_output or 0) + repair_tokens_out
+            tokens_total = tokens_input + tokens_output if (
+                result.tokens_input is not None or repair_tokens_in
+            ) else result.tokens_total
             cost = estimate_cost_usd(
-                tokens_input=result.tokens_input,
-                tokens_output=result.tokens_output,
+                tokens_input=tokens_input or None,
+                tokens_output=tokens_output or None,
                 pricing_input_per_1k=model.pricing_input_per_1k,
                 pricing_output_per_1k=model.pricing_output_per_1k,
             )
+            if cost is not None:
+                cost = round(cost + repair_cost_extra, 6)
             generation = AiGeneration(
                 job_id=job.id,
                 prompt_version_id=version.id,
@@ -254,9 +406,13 @@ def execute_job(
                 purpose=job.purpose,
                 knowledge_pack_id=job.knowledge_pack_id,
                 project_id=job.project_id,
-                tokens_input=result.tokens_input,
-                tokens_output=result.tokens_output,
-                tokens_total=result.tokens_total,
+                script_id=job.script_id,
+                document_type=job.document_type,
+                input_fingerprint_json=job.input_fingerprint_json,
+                warnings_json=warnings,
+                tokens_input=tokens_input or result.tokens_input,
+                tokens_output=tokens_output or result.tokens_output,
+                tokens_total=tokens_total,
                 cost_usd=cost,
                 latency_ms=result.latency_ms,
                 provider_request_id=result.provider_request_id,
@@ -297,6 +453,28 @@ def execute_job(
                 ip_address=ip_address,
                 user_agent=user_agent,
             )
+            if job.purpose in SCRIPT_DRAFT_PURPOSES and job.script_id is not None:
+                record_audit_event(
+                    db,
+                    action=ACTION_SCRIPT_AI_DRAFT_COMPLETED,
+                    entity_type=ENTITY_SCRIPT,
+                    entity_id=job.script_id,
+                    actor_user_id=actor.id if actor else job.requested_by,
+                    metadata={
+                        "job_id": str(job.id),
+                        "generation_id": str(generation.id),
+                        "document_type": job.document_type,
+                        "purpose": job.purpose,
+                        "provider": provider_row.code,
+                        "model": model.code,
+                        "prompt_version_id": str(version.id),
+                        "tokens_total": tokens_total,
+                        "estimated_cost_usd": cost,
+                        "warnings_count": len(warnings),
+                    },
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                )
             db.commit()
             db.refresh(job)
             return job
@@ -382,6 +560,22 @@ def _fail_job(
         ip_address=ip_address,
         user_agent=user_agent,
     )
+    if job.purpose in SCRIPT_DRAFT_PURPOSES and job.script_id is not None:
+        record_audit_event(
+            db,
+            action=ACTION_SCRIPT_AI_DRAFT_FAILED,
+            entity_type=ENTITY_SCRIPT,
+            entity_id=job.script_id,
+            actor_user_id=actor.id if actor else job.requested_by,
+            metadata={
+                "job_id": str(job.id),
+                "document_type": job.document_type,
+                "purpose": job.purpose,
+                "error": message[:240],
+            },
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
     db.commit()
     db.refresh(job)
     return job

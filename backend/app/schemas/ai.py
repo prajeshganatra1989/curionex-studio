@@ -222,6 +222,8 @@ class AiJobResponse(BaseModel):
     purpose: str | None = None
     knowledge_pack_id: UUID | None = None
     project_id: UUID | None = None
+    script_id: UUID | None = None
+    document_type: str | None = None
     idempotency_key: str | None = None
     cancel_requested: bool = False
     generation_id: UUID | None = None
@@ -260,6 +262,8 @@ class AiGenerationResponse(BaseModel):
     purpose: str | None = None
     knowledge_pack_id: UUID | None = None
     project_id: UUID | None = None
+    script_id: UUID | None = None
+    document_type: str | None = None
     tokens_input: int | None
     tokens_output: int | None
     tokens_total: int | None = None
@@ -271,6 +275,9 @@ class AiGenerationResponse(BaseModel):
     seed: int | None
     applied_sections: list[str] = Field(default_factory=list)
     applied_at: datetime | None = None
+    warnings: list[str] = Field(default_factory=list)
+    input_fingerprint: dict[str, Any] | None = None
+    stale_input: bool | None = None
     created_at: datetime
 
 
@@ -335,9 +342,67 @@ class AiSettingsResponse(BaseModel):
     default_model_id: UUID | None
     default_temperature: float
     default_max_tokens: int
+    brand_voice: str | None = None
+    quality_requirements: str | None = None
+    default_target_duration_seconds: int = 60
+    default_target_words_per_minute: int = 150
 
 
 class AiSettingsUpdate(BaseModel):
     default_model_id: UUID | None = None
     default_temperature: float | None = Field(default=None, ge=0, le=2)
     default_max_tokens: int | None = Field(default=None, ge=1, le=128000)
+    brand_voice: str | None = Field(default=None, max_length=4000)
+    quality_requirements: str | None = Field(default=None, max_length=8000)
+    default_target_duration_seconds: int | None = Field(default=None, ge=15, le=300)
+    default_target_words_per_minute: int | None = Field(default=None, ge=80, le=220)
+
+
+class ScriptAiDraftCreate(BaseModel):
+    model_id: UUID | None = None
+    language: str = Field(default="English", max_length=64)
+    tone: str = Field(default="curious, cinematic, clear", max_length=200)
+    target_duration_seconds: int | None = Field(default=None, ge=15, le=300)
+    target_words_per_minute: int | None = Field(default=None, ge=80, le=220)
+    idempotency_key: str | None = Field(default=None, max_length=128)
+
+    @field_validator("language", "tone")
+    @classmethod
+    def strip_text(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("idempotency_key")
+    @classmethod
+    def strip_key(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
+
+
+class ScriptAiDraftApply(BaseModel):
+    conflict_strategy: str = Field(default="reject_if_non_empty")
+
+    @field_validator("conflict_strategy")
+    @classmethod
+    def validate_strategy(cls, value: str) -> str:
+        allowed = {"reject_if_non_empty", "replace", "append"}
+        cleaned = value.strip()
+        if cleaned not in allowed:
+            raise ValueError(
+                "conflict_strategy must be one of: " + ", ".join(sorted(allowed))
+            )
+        return cleaned
+
+
+class ScriptAiDraftApplyResponse(BaseModel):
+    document: dict[str, Any]
+    generation_id: UUID
+    conflict_strategy: str
+    stale_input: bool
+
+
+class ScriptAiPrerequisitesResponse(BaseModel):
+    document_type: str
+    ready: bool
+    missing: list[str] = Field(default_factory=list)
