@@ -17,7 +17,9 @@ import { TextInput, TextSelect } from "@/components/ui/field";
 import { ApiError } from "@/lib/api/client";
 import {
   EDITORIAL_CATEGORIES,
+  PRODUCTION_WAVES,
   TOPIC_DIFFICULTIES,
+  TOPIC_PRIORITIES,
   TOPIC_STATUSES,
   type EditorialTopic,
 } from "@/lib/editorial/types";
@@ -44,6 +46,8 @@ export function TopicsPage() {
   const status = searchParams.get("status") || "";
   const category = searchParams.get("category") || "";
   const difficulty = searchParams.get("difficulty") || "";
+  const priority = searchParams.get("priority") || "";
+  const wave = searchParams.get("production_wave") || "";
   const minEvergreen = searchParams.get("min_evergreen_score") || "";
   const sort = searchParams.get("sort") || "updated_at_desc";
   const search = searchParams.get("search") || "";
@@ -73,11 +77,13 @@ export function TopicsPage() {
       status: status || undefined,
       category: category || undefined,
       difficulty: difficulty || undefined,
+      priority: priority || undefined,
+      production_wave: wave ? Number(wave) : undefined,
       min_evergreen_score: minEvergreen ? Number(minEvergreen) : undefined,
       search: search.trim() || undefined,
       sort,
     }),
-    [page, status, category, difficulty, minEvergreen, search, sort],
+    [page, status, category, difficulty, priority, wave, minEvergreen, search, sort],
   );
 
   const { data, isLoading, isError, error, refetch } = useEditorialTopics(params);
@@ -154,6 +160,30 @@ export function TopicsPage() {
 
       <div className="mb-4 flex flex-wrap gap-3">
         <TextSelect
+          aria-label="Filter by priority"
+          value={priority}
+          onChange={(event) => updateParam("priority", event.target.value)}
+        >
+          <option value="">All priorities</option>
+          {TOPIC_PRIORITIES.map((item) => (
+            <option key={item} value={item}>
+              Tier {item}
+            </option>
+          ))}
+        </TextSelect>
+        <TextSelect
+          aria-label="Filter by production wave"
+          value={wave}
+          onChange={(event) => updateParam("production_wave", event.target.value)}
+        >
+          <option value="">All waves</option>
+          {PRODUCTION_WAVES.map((item) => (
+            <option key={item} value={String(item)}>
+              Wave {item}
+            </option>
+          ))}
+        </TextSelect>
+        <TextSelect
           aria-label="Minimum evergreen score"
           value={minEvergreen}
           onChange={(event) =>
@@ -174,6 +204,8 @@ export function TopicsPage() {
           <option value="updated_at_desc">Recently updated</option>
           <option value="evergreen_desc">Evergreen score</option>
           <option value="curiosity_desc">Curiosity score</option>
+          <option value="priority_asc">Priority A–C</option>
+          <option value="wave_asc">Wave 1–4</option>
           <option value="title_asc">Title A–Z</option>
           <option value="created_at_desc">Newest</option>
         </TextSelect>
@@ -221,6 +253,8 @@ export function TopicsPage() {
                   <th className="px-4 py-3 font-medium">Title</th>
                   <th className="px-4 py-3 font-medium">Category</th>
                   <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium">Priority</th>
+                  <th className="px-4 py-3 font-medium">Wave</th>
                   <th className="px-4 py-3 font-medium">Evergreen</th>
                   <th className="px-4 py-3 font-medium">Curiosity</th>
                   <th className="px-4 py-3 font-medium">Difficulty</th>
@@ -246,6 +280,14 @@ export function TopicsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={topic.status} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="inline-flex rounded-md border border-border px-1.5 py-0.5 text-[11px] font-semibold tracking-wide">
+                        {topic.priority}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 tabular-nums text-muted-foreground">
+                      {topic.production_wave}
                     </td>
                     <td className="px-4 py-3 tabular-nums">{topic.evergreen_score}</td>
                     <td className="px-4 py-3 tabular-nums">{topic.curiosity_score}</td>

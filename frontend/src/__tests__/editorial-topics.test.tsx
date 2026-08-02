@@ -84,6 +84,8 @@ const sampleTopic: EditorialTopic = {
   linked_project_id: null,
   published_video_url: null,
   is_featured: true,
+  priority: "A",
+  production_wave: 1,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
   linked_project: null,
@@ -136,6 +138,22 @@ describe("TopicsPage", () => {
     expect(replaceMock).toHaveBeenCalled();
     const last = replaceMock.mock.calls.at(-1)?.[0] as string;
     expect(last).toContain("category=Space");
+  });
+
+  it("updates priority and wave filters in the URL", async () => {
+    const user = userEvent.setup();
+    wrap(<TopicsPage />);
+    await screen.findByText("Why Is Space Silent?");
+    await user.selectOptions(screen.getByLabelText(/filter by priority/i), "A");
+    expect(replaceMock).toHaveBeenCalled();
+    const priorityCall = replaceMock.mock.calls.at(-1)?.[0] as string;
+    expect(priorityCall).toContain("priority=A");
+    await user.selectOptions(
+      screen.getByLabelText(/filter by production wave/i),
+      "1",
+    );
+    const waveCall = replaceMock.mock.calls.at(-1)?.[0] as string;
+    expect(waveCall).toContain("production_wave=1");
   });
 
   it("shows empty state when no topics match", async () => {

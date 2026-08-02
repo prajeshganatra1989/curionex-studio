@@ -75,3 +75,20 @@ CREATE_PROJECT_ALLOWED_STATUSES: frozenset[str] = frozenset(
         TOPIC_STATUS_IN_PROGRESS,
     }
 )
+
+TOPIC_PRIORITY_A = "A"
+TOPIC_PRIORITY_B = "B"
+TOPIC_PRIORITY_C = "C"
+
+TOPIC_PRIORITIES: frozenset[str] = frozenset(
+    {
+        TOPIC_PRIORITY_A,
+        TOPIC_PRIORITY_B,
+        TOPIC_PRIORITY_C,
+    }
+)
+
+DEFAULT_TOPIC_PRIORITY = TOPIC_PRIORITY_B
+
+PRODUCTION_WAVES: frozenset[int] = frozenset({1, 2, 3, 4})
+DEFAULT_PRODUCTION_WAVE = 4

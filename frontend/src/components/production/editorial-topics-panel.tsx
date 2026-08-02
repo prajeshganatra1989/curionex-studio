@@ -18,7 +18,7 @@ export function EditorialTopicsPanel({ className }: { className?: string }) {
   return (
     <SectionPanel
       title="Editorial Library"
-      description="Available ideas ready for production."
+      description="Production catalog waves and topic pipeline."
       className={className}
       action={
         <Link
@@ -55,41 +55,89 @@ export function EditorialTopicsPanel({ className }: { className?: string }) {
         ) : null}
 
         {!isLoading && !isError && data ? (
-          <dl className="grid grid-cols-3 gap-3">
-            <div className="rounded-lg border border-border/60 px-3 py-2">
-              <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                Available
-              </dt>
-              <dd
-                className="mt-1 text-xl font-semibold tabular-nums"
-                data-testid="topics-available"
-              >
-                {data.available}
-              </dd>
-            </div>
-            <div className="rounded-lg border border-border/60 px-3 py-2">
-              <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                In progress
-              </dt>
-              <dd
-                className="mt-1 text-xl font-semibold tabular-nums"
-                data-testid="topics-in-progress"
-              >
-                {data.in_progress}
-              </dd>
-            </div>
-            <div className="rounded-lg border border-border/60 px-3 py-2">
-              <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                Published
-              </dt>
-              <dd
-                className="mt-1 text-xl font-semibold tabular-nums"
-                data-testid="topics-published"
-              >
-                {data.published}
-              </dd>
-            </div>
-          </dl>
+          <div className="space-y-3">
+            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="rounded-lg border border-border/60 px-3 py-2">
+                <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Wave 1 remaining
+                </dt>
+                <dd
+                  className="mt-1 text-xl font-semibold tabular-nums"
+                  data-testid="topics-wave-1-remaining"
+                >
+                  {data.wave_1_remaining}
+                </dd>
+              </div>
+              <div className="rounded-lg border border-border/60 px-3 py-2">
+                <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Wave 2 remaining
+                </dt>
+                <dd
+                  className="mt-1 text-xl font-semibold tabular-nums"
+                  data-testid="topics-wave-2-remaining"
+                >
+                  {data.wave_2_remaining}
+                </dd>
+              </div>
+              <div className="rounded-lg border border-border/60 px-3 py-2">
+                <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Approved in wave {data.current_wave}
+                </dt>
+                <dd
+                  className="mt-1 text-xl font-semibold tabular-nums"
+                  data-testid="topics-approved-current-wave"
+                >
+                  {data.approved_in_current_wave}
+                </dd>
+              </div>
+              <div className="rounded-lg border border-border/60 px-3 py-2">
+                <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Remaining in wave
+                </dt>
+                <dd
+                  className="mt-1 text-xl font-semibold tabular-nums"
+                  data-testid="topics-remaining-in-wave"
+                >
+                  {data.remaining_in_wave}
+                </dd>
+              </div>
+            </dl>
+            <dl className="grid grid-cols-3 gap-3">
+              <div className="rounded-lg border border-border/60 px-3 py-2">
+                <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Available
+                </dt>
+                <dd
+                  className="mt-1 text-lg font-semibold tabular-nums"
+                  data-testid="topics-available"
+                >
+                  {data.available}
+                </dd>
+              </div>
+              <div className="rounded-lg border border-border/60 px-3 py-2">
+                <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  In progress
+                </dt>
+                <dd
+                  className="mt-1 text-lg font-semibold tabular-nums"
+                  data-testid="topics-in-progress"
+                >
+                  {data.in_progress}
+                </dd>
+              </div>
+              <div className="rounded-lg border border-border/60 px-3 py-2">
+                <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Published
+                </dt>
+                <dd
+                  className="mt-1 text-lg font-semibold tabular-nums"
+                  data-testid="topics-published"
+                >
+                  {data.published}
+                </dd>
+              </div>
+            </dl>
+          </div>
         ) : null}
       </div>
     </SectionPanel>
