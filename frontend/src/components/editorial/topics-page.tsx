@@ -322,7 +322,7 @@ export function TopicsPage() {
                             onClick={() => setCreateTopic(topic)}
                           >
                             <FolderPlus className="h-3.5 w-3.5" aria-hidden />
-                            Create Project
+                            Start Production
                           </Button>
                         )}
                       </div>
@@ -351,7 +351,9 @@ export function TopicsPage() {
         open={Boolean(createTopic)}
         topic={createTopic}
         onClose={() => setCreateTopic(null)}
-        onCreated={(projectId) => router.push(`/projects/${projectId}`)}
+        onCreated={() => {
+          void router.push("/production/session");
+        }}
       />
     </PageContainer>
   );

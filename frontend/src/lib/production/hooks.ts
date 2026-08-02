@@ -11,6 +11,7 @@ import {
   getProductionMetrics,
   getProductionOverview,
   getProductionQueue,
+  getProductionSession,
   getProductionSettings,
   updateProductionSettings,
 } from "@/lib/api/production";
@@ -24,6 +25,7 @@ import type {
 export const productionKeys = {
   all: ["production"] as const,
   overview: () => [...productionKeys.all, "overview"] as const,
+  session: () => [...productionKeys.all, "session"] as const,
   queues: () => [...productionKeys.all, "queue"] as const,
   queue: (params: ProductionQueueParams) =>
     [...productionKeys.queues(), params] as const,
@@ -35,6 +37,7 @@ export const productionKeys = {
 };
 
 const OVERVIEW_POLL_MS = 30_000;
+const SESSION_POLL_MS = 20_000;
 
 export function useProductionOverview(options?: { poll?: boolean }) {
   const { api, status } = useAuth();
@@ -45,6 +48,19 @@ export function useProductionOverview(options?: { poll?: boolean }) {
     enabled: status === "authenticated",
     refetchInterval: poll ? OVERVIEW_POLL_MS : false,
     refetchIntervalInBackground: false,
+  });
+}
+
+export function useProductionSession(options?: { poll?: boolean }) {
+  const { api, status } = useAuth();
+  const poll = options?.poll ?? true;
+  return useQuery({
+    queryKey: productionKeys.session(),
+    queryFn: () => getProductionSession(api),
+    enabled: status === "authenticated",
+    refetchInterval: poll ? SESSION_POLL_MS : false,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
   });
 }
 

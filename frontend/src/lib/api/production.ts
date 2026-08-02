@@ -6,6 +6,7 @@ import type {
   ProductionOverview,
   ProductionQueueParams,
   ProductionQueueResponse,
+  ProductionSession,
   ProductionSettings,
   ProductionSettingsUpdate,
 } from "@/lib/production/types";
@@ -22,6 +23,10 @@ function toQuery(params: Record<string, string | number | boolean | undefined | 
 
 export function getProductionOverview(client: ApiClient) {
   return client.get<ProductionOverview>("/production/overview");
+}
+
+export function getProductionSession(client: ApiClient) {
+  return client.get<ProductionSession>("/production/session");
 }
 
 export function getProductionQueue(

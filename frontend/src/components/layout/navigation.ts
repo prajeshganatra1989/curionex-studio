@@ -1,15 +1,11 @@
 import {
-  Activity,
-  CheckSquare,
+  CirclePlay,
   Factory,
-  FileText,
   FolderKanban,
-  Layers3,
   LayoutDashboard,
   Library,
   Settings,
   BookOpen,
-  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 
@@ -19,16 +15,13 @@ export type NavItem = {
   icon: LucideIcon;
 };
 
+/** Primary daily workflow first; Projects kept as an implementation detail. */
 export const MAIN_NAV: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/production/session", label: "Session", icon: CirclePlay },
   { href: "/production", label: "Production", icon: Factory },
   { href: "/topics", label: "Topics", icon: Library },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/projects", label: "Projects", icon: FolderKanban },
   { href: "/knowledge-packs", label: "Knowledge Packs", icon: BookOpen },
-  { href: "/scripts", label: "Scripts", icon: FileText },
-  { href: "/versions", label: "Versions", icon: Layers3 },
-  { href: "/reviews", label: "Reviews", icon: CheckSquare },
-  { href: "/activity", label: "Activity", icon: Activity },
-  { href: "/ai", label: "AI", icon: Sparkles },
   { href: "/settings", label: "Settings", icon: Settings },
 ];

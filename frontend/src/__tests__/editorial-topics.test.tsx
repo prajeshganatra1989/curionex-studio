@@ -125,7 +125,7 @@ describe("TopicsPage", () => {
     expect(screen.getByText("90")).toBeInTheDocument();
     expect(screen.getByText("Featured")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /create project/i }),
+      screen.getByRole("button", { name: /start production/i }),
     ).toBeInTheDocument();
     expect(screen.getAllByText(/idea/i).length).toBeGreaterThanOrEqual(1);
   });
@@ -171,10 +171,24 @@ describe("TopicsPage", () => {
     const user = userEvent.setup();
     wrap(<TopicsPage />);
     await screen.findByText("Why Is Space Silent?");
-    await user.click(screen.getByRole("button", { name: /create project/i }));
+    await user.click(screen.getByRole("button", { name: /start production/i }));
     expect(
       await screen.findByRole("heading", { name: /create project from topic/i }),
     ).toBeInTheDocument();
     expect(screen.getByDisplayValue("Why Is Space Silent?")).toBeInTheDocument();
+  });
+
+  it("navigates to production session after starting production", async () => {
+    const user = userEvent.setup();
+    createProjectFromTopic.mockResolvedValue({
+      topic: { ...sampleTopic, linked_project_id: "p1" },
+      project: { id: "p1", name: "Why Is Space Silent?" },
+    });
+    wrap(<TopicsPage />);
+    await screen.findByText("Why Is Space Silent?");
+    await user.click(screen.getByRole("button", { name: /start production/i }));
+    await screen.findByRole("heading", { name: /create project from topic/i });
+    await user.click(screen.getByRole("button", { name: /create project/i }));
+    expect(pushMock).toHaveBeenCalledWith("/production/session");
   });
 });
