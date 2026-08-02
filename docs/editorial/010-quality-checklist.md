@@ -26,6 +26,7 @@ Editors and AI quality review share the same checklist from the active Content S
 
 ## Related
 
+- [020-editorial-bible-v1.md](./020-editorial-bible-v1.md) — Gold / Platinum thresholds + full review criteria
 - [007-curionex-content-standard.md](./007-curionex-content-standard.md)
 - [008-brand-voice.md](./008-brand-voice.md)
 - [009-editorial-principles.md](./009-editorial-principles.md)

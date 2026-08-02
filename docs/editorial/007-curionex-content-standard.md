@@ -82,6 +82,7 @@ Also re-run RBAC seed so `content_standards.*` permissions exist on roles.
 
 ## Related docs
 
+- [020-editorial-bible-v1.md](./020-editorial-bible-v1.md) — **Curionex Editorial Bible v1.0** (full editorial OS; Founding Collection)
 - [008-brand-voice.md](./008-brand-voice.md)
 - [009-editorial-principles.md](./009-editorial-principles.md)
 - [010-quality-checklist.md](./010-quality-checklist.md)

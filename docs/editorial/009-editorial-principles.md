@@ -27,4 +27,7 @@ Hook → Context → Explanation → Twist → Payoff → CTA
 - Prefer authoritative sources
 - Flag claims that still need human verification
 
-See also [007-curionex-content-standard.md](./007-curionex-content-standard.md).
+See also:
+
+- [020-editorial-bible-v1.md](./020-editorial-bible-v1.md) — full principle set + Founding Collection
+- [007-curionex-content-standard.md](./007-curionex-content-standard.md)
