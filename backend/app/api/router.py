@@ -7,6 +7,7 @@ from app.api.routes import (
     audit,
     auth,
     categories,
+    content_standards,
     content_versions,
     editorial,
     health,
@@ -28,6 +29,7 @@ api_router.include_router(projects.router)
 api_router.include_router(categories.router)
 api_router.include_router(tags.router)
 api_router.include_router(editorial.router)
+api_router.include_router(content_standards.router)
 api_router.include_router(knowledge_packs.project_packs_router)
 api_router.include_router(knowledge_packs.packs_router)
 api_router.include_router(content_versions.project_versions_router)

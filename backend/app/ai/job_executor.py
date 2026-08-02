@@ -62,6 +62,7 @@ from app.audit.actions import (
     ENTITY_AI_JOB,
     ENTITY_SCRIPT,
 )
+from app.editorial.content_standard_prompt import inject_content_standard_variables
 from app.models.ai import (
     AiGeneration,
     AiGenerationLog,
@@ -169,9 +170,7 @@ def _maybe_repair_master_script_duration(
             return structured, warnings, repair_in, repair_out, repair_cost
 
     if lo <= count <= hi:
-        warnings.append(
-            f"Duration repaired to {count} words (target range {lo}-{hi})."
-        )
+        warnings.append(f"Duration repaired to {count} words (target range {lo}-{hi}).")
     else:
         warnings.append(
             f"Narration word count {count} still outside target range "
@@ -258,7 +257,9 @@ def execute_job(
     temperature = settings_row.default_temperature if settings_row else 0.7
     max_tokens = settings_row.default_max_tokens if settings_row else 2048
 
-    variables = dict(job.input_variables_json or {})
+    variables = inject_content_standard_variables(
+        db, dict(job.input_variables_json or {})
+    )
     try:
         system_prompt = render_template(version.system_prompt, variables)
         user_prompt = render_template(version.user_template, variables)
@@ -420,9 +421,11 @@ def execute_job(
             finished = _utcnow()
             tokens_input = (result.tokens_input or 0) + repair_tokens_in
             tokens_output = (result.tokens_output or 0) + repair_tokens_out
-            tokens_total = tokens_input + tokens_output if (
-                result.tokens_input is not None or repair_tokens_in
-            ) else result.tokens_total
+            tokens_total = (
+                tokens_input + tokens_output
+                if (result.tokens_input is not None or repair_tokens_in)
+                else result.tokens_total
+            )
             cost = estimate_cost_usd(
                 tokens_input=tokens_input or None,
                 tokens_output=tokens_output or None,

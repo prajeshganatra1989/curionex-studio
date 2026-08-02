@@ -52,6 +52,7 @@ from app.audit.actions import (
     ENTITY_AI_PROVIDER,
     ENTITY_AI_SETTINGS,
 )
+from app.editorial.content_standard_prompt import inject_content_standard_variables
 from app.models.ai import (
     AiGeneration,
     AiJob,
@@ -696,7 +697,10 @@ def create_job(
     if not provider.is_active:
         raise ValidationError("Selected provider is inactive.")
 
-    variables = {str(k): str(v) for k, v in (payload.input_variables or {}).items()}
+    variables = inject_content_standard_variables(
+        db,
+        {str(k): str(v) for k, v in (payload.input_variables or {}).items()},
+    )
     declared = _version_variables(version)
     missing = [name for name in declared if name not in variables]
     if missing:
@@ -708,12 +712,16 @@ def create_job(
     except PromptRenderError as exc:
         raise ValidationError(str(exc)) from exc
 
+    # Persist caller-supplied variables; Content Standard is injected at render time.
+    stored_variables = {
+        str(k): str(v) for k, v in (payload.input_variables or {}).items()
+    }
     job = AiJob(
         status=JOB_STATUS_QUEUED,
         requested_by=actor.id,
         prompt_version_id=version.id,
         model_id=model.id,
-        input_variables_json=variables,
+        input_variables_json=stored_variables,
     )
     db.add(job)
     db.flush()

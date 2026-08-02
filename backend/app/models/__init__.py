@@ -11,6 +11,7 @@ from app.models.ai import (
     AiSettings,
 )
 from app.models.audit import AuditLog
+from app.models.content_standard import ContentStandard
 from app.models.content_version import Approval, ContentVersion
 from app.models.editorial import EditorialTopic
 from app.models.knowledge_pack import KnowledgePack, KnowledgePackSection
@@ -33,6 +34,7 @@ __all__ = [
     "Approval",
     "AuditLog",
     "Category",
+    "ContentStandard",
     "ContentVersion",
     "ContentWorkflow",
     "EditorialTopic",
